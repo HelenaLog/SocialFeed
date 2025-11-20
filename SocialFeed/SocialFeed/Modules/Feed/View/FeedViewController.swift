@@ -8,7 +8,10 @@ final class FeedViewController: UIViewController {
         let tableView = UITableView()
         tableView.backgroundColor = .systemPink
         tableView.showsVerticalScrollIndicator = false
-        tableView.register(FeedTableViewCell.self, forCellReuseIdentifier: FeedTableViewCell.identifier)
+        tableView.register(
+            FeedTableViewCell.self,
+            forCellReuseIdentifier: FeedTableViewCell.identifier
+        )
         tableView.translatesAutoresizingMaskIntoConstraints = false
         return tableView
     }()
