@@ -45,10 +45,8 @@ extension URLSessionNetworkClient: NetworkClient {
                 return
             }
             
-            let decoder = JSONDecoder()
-            
             do {
-                let dataModel = try decoder.decode(T.self, from: data)
+                let dataModel = try self.decoder.decode(T.self, from: data)
                 completion(.success(dataModel))
             } catch {
                 completion(.failure(.invalidDecode))
