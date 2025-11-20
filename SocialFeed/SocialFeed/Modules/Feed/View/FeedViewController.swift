@@ -4,6 +4,9 @@ final class FeedViewController: UIViewController {
     
     // MARK: Private Properties
     
+    private let apiService: APIServiceType
+    private var posts = [PostDTO]()
+    
     private let tableView: UITableView = {
         let tableView = UITableView()
         tableView.backgroundColor = .systemPink
@@ -16,6 +19,17 @@ final class FeedViewController: UIViewController {
         return tableView
     }()
     
+    // MARK: Init
+    
+    init(apiService: APIServiceType) {
+        self.apiService = apiService
+        super.init(nibName: nil, bundle: nil)
+    }
+    
+    required init?(coder: NSCoder) {
+        fatalError("init(coder:) has not been implemented")
+    }
+    
     // MARK: Lifecycle
 
     override func viewDidLoad() {
@@ -23,6 +37,7 @@ final class FeedViewController: UIViewController {
         embedViews()
         setupLayout()
         setupDelegates()
+        fetchPosts()
     }
 }
 
@@ -38,7 +53,7 @@ extension FeedViewController: UITableViewDelegate {
 
 extension FeedViewController: UITableViewDataSource {
     func tableView(_ tableView: UITableView, numberOfRowsInSection section: Int) -> Int {
-        10
+        posts.count
     }
     
     func tableView(_ tableView: UITableView, cellForRowAt indexPath: IndexPath) -> UITableViewCell {
@@ -48,7 +63,8 @@ extension FeedViewController: UITableViewDataSource {
         ) as? FeedTableViewCell else {
             return UITableViewCell()
         }
-        cell.configure()
+        let post = posts[indexPath.row]
+        cell.configure(with: post)
         return cell
     }
 }
@@ -56,6 +72,21 @@ extension FeedViewController: UITableViewDataSource {
 // MARK: - Private Methods
 
 private extension FeedViewController {
+    func fetchPosts() {
+        apiService.fetchPosts(page: 1, limit: 10) { [weak self] result in
+            guard let self else { return }
+            switch result {
+            case .success(let posts):
+                self.posts = posts
+                DispatchQueue.main.async {
+                    self.tableView.reloadData()
+                }
+            case .failure(let error):
+                print(error.localizedDescription)
+            }
+        }
+    }
+    
     func embedViews() {
         view.addSubview(tableView)
     }

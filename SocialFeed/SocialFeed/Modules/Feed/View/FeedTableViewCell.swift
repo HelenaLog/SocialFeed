@@ -75,9 +75,9 @@ final class FeedTableViewCell: UITableViewCell {
 
 extension FeedTableViewCell {
     
-    func configure() {
-        titleLabel.text = "sunt aut facere repellat provident occaecati excepturi optio reprehenderit"
-        bodyLabel.text = "quia et suscipit\nsuscipit recusandae consequuntur expedita et cum\nreprehenderit molestiae ut ut quas totam\nnostrum rerum est autem sunt rem eveniet architecto"
+    func configure(with item: PostDTO) {
+        titleLabel.text = item.title
+        bodyLabel.text = item.body
         likeButton.isSelected = true
         avatarImageView.image = UIImage(systemName: StringConstants.personFillIcon)
     }

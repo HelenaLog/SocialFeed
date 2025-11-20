@@ -11,7 +11,9 @@ final class SceneDelegate: UIResponder, UIWindowSceneDelegate {
     ) {
         guard let windowScene = (scene as? UIWindowScene) else { return }
         window = UIWindow(windowScene: windowScene)
-        window?.rootViewController = FeedViewController()
+        let networkClient = URLSessionNetworkClient()
+        let apiService = JsonPlaceholderService(networkClient: networkClient)
+        window?.rootViewController = FeedViewController(apiService: apiService)
         window?.makeKeyAndVisible()
     }
 }
