@@ -1,4 +1,4 @@
-import Foundation
+import UIKit
 
 final class URLSessionNetworkClient {
     
@@ -49,6 +49,35 @@ extension URLSessionNetworkClient: NetworkClient {
                 let dataModel = try self.decoder.decode(T.self, from: data)
                 completion(.success(dataModel))
             } catch {
+                completion(.failure(.invalidDecode))
+            }
+        }.resume()
+    }
+}
+
+extension URLSessionNetworkClient: ImageLoader {
+    func loadImage(from url: URL, completion: @escaping (Result<UIImage, NetworkError>) -> Void) {
+        let request = URLRequest(url: url)
+        
+        urlSession.dataTask(with: request) { data, response, error in
+            if let _ = error {
+                completion(.failure(.unableToComplete))
+                return
+            }
+            
+            guard let response = response as? HTTPURLResponse, response.statusCode == 200 else {
+                completion(.failure(.invalidResponse))
+                return
+            }
+            
+            guard let data = data else {
+                completion(.failure(.invalidData))
+                return
+            }
+            
+            if let image = UIImage(data: data) {
+                completion(.success(image))
+            } else {
                 completion(.failure(.invalidDecode))
             }
         }.resume()

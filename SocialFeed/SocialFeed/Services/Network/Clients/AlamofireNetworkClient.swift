@@ -1,5 +1,5 @@
 import Alamofire
-import Foundation
+import UIKit
 
 final class AlamofireNetworkClient {
     
@@ -33,6 +33,31 @@ extension AlamofireNetworkClient: NetworkClient {
                 switch response.result {
                 case .success(let data):
                     completion(.success(data))
+                case .failure(let error):
+                    let networkError = self.mapAFError(error)
+                    completion(.failure(networkError))
+                }
+            }
+    }
+}
+
+// MARK: ImageLoader
+
+extension AlamofireNetworkClient: ImageLoader {
+    func loadImage(
+        from url: URL,
+        completion: @escaping (Result<UIImage, NetworkError>) -> Void
+    ) {
+        session.request(url)
+            .validate()
+            .responseData { response in
+                switch response.result {
+                case .success(let data):
+                    if let image = UIImage(data: data) {
+                        completion(.success(image))
+                    } else {
+                        completion(.failure(.invalidDecode))
+                    }
                 case .failure(let error):
                     let networkError = self.mapAFError(error)
                     completion(.failure(networkError))
