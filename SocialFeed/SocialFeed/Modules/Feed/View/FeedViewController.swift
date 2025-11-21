@@ -13,6 +13,7 @@ final class FeedViewController: UIViewController {
     
     private var currentPage = 1
     private let limit = 10
+    private var hasMorePosts = true
     
     private let tableView: UITableView = {
         let tableView = UITableView()
@@ -62,6 +63,19 @@ final class FeedViewController: UIViewController {
 extension FeedViewController: UITableViewDelegate {
     func tableView(_ tableView: UITableView, didSelectRowAt indexPath: IndexPath) {
         tableView.deselectRow(at: indexPath, animated: true)
+    }
+    
+    func scrollViewDidEndDragging(_ scrollView: UIScrollView, willDecelerate decelerate: Bool) {
+        let offsetY = scrollView.contentOffset.y
+        let contentHeight = scrollView.contentSize.height
+        let height = scrollView.frame.size.height
+        
+        if offsetY > .zero && offsetY >= (contentHeight - height) {
+            guard hasMorePosts == true else { return }
+            currentPage += 1
+            print(currentPage)
+            fetchPosts()
+        }
     }
 }
 
