@@ -13,7 +13,9 @@ final class SceneDelegate: UIResponder, UIWindowSceneDelegate {
         window = UIWindow(windowScene: windowScene)
         let networkClient = URLSessionNetworkClient()
         let apiService = JsonPlaceholderService(networkClient: networkClient)
-        window?.rootViewController = FeedViewController(apiService: apiService)
+        let imageCache = MemoryImageCache()
+        let imageService = ImageService(imageLoader: networkClient, imageCache: imageCache)
+        window?.rootViewController = FeedViewController(apiService: apiService, imageService: imageService)
         window?.makeKeyAndVisible()
     }
 }

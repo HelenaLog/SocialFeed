@@ -75,11 +75,21 @@ final class FeedTableViewCell: UITableViewCell {
 
 extension FeedTableViewCell {
     
-    func configure(with item: PostDTO) {
+    func configure(with item: DisplayPost) {
         titleLabel.text = item.title
         bodyLabel.text = item.body
-        likeButton.isSelected = true
-        avatarImageView.image = UIImage(systemName: StringConstants.personFillIcon)
+        likeButton.isSelected = item.isLiked
+        avatarImageView.image = UIImage(systemName: StringConstants.personCircleIcon)
+    }
+    
+    func setAvatarImage(_ image: UIImage?) {
+        UIView.transition(
+            with: avatarImageView,
+            duration: 0.3,
+            options: .transitionCrossDissolve
+        ) {
+            self.avatarImageView.image = image
+        }
     }
 }
 
@@ -210,6 +220,6 @@ private extension FeedTableViewCell {
         static let identifier = "FeedTableViewCell"
         static let heartIcon = "heart"
         static let heartFillIcon = "heart.fill"
-        static let personFillIcon = "person.circle"
+        static let personCircleIcon = "person.circle"
     }
 }

@@ -5,7 +5,12 @@ final class FeedViewController: UIViewController {
     // MARK: Private Properties
     
     private let apiService: APIServiceType
-    private var posts = [PostDTO]()
+    private let imageService: ImageServiceType
+    
+    private var posts = [DisplayPost]()
+    
+    private var currentPage = 1
+    private let limit = 10
     
     private let tableView: UITableView = {
         let tableView = UITableView()
@@ -21,8 +26,12 @@ final class FeedViewController: UIViewController {
     
     // MARK: Init
     
-    init(apiService: APIServiceType) {
+    init(
+        apiService: APIServiceType,
+        imageService: ImageServiceType
+    ) {
         self.apiService = apiService
+        self.imageService = imageService
         super.init(nibName: nil, bundle: nil)
     }
     
@@ -37,6 +46,7 @@ final class FeedViewController: UIViewController {
         embedViews()
         setupLayout()
         setupDelegates()
+        setupAppearance()
         fetchPosts()
     }
 }
@@ -65,6 +75,7 @@ extension FeedViewController: UITableViewDataSource {
         }
         let post = posts[indexPath.row]
         cell.configure(with: post)
+        fetchAvatar(for: cell, at: indexPath, with: post.avatarURL)
         return cell
     }
 }
@@ -73,13 +84,31 @@ extension FeedViewController: UITableViewDataSource {
 
 private extension FeedViewController {
     func fetchPosts() {
-        apiService.fetchPosts(page: 1, limit: 10) { [weak self] result in
+        apiService.fetchPosts(page: currentPage, limit: limit) { [weak self] result in
             guard let self else { return }
             switch result {
             case .success(let posts):
-                self.posts = posts
+                let displayPosts = posts.map { DisplayPost(from: $0) }
+                self.posts.append(contentsOf: displayPosts)
                 DispatchQueue.main.async {
                     self.tableView.reloadData()
+                }
+            case .failure(let error):
+                print(error.localizedDescription)
+            }
+        }
+    }
+    
+    func fetchAvatar(
+        for cell: FeedTableViewCell,
+        at indexPath: IndexPath,
+        with urlString: String
+    ) {
+        imageService.fetchImage(from: urlString) { result in
+            switch result {
+            case .success(let image):
+                DispatchQueue.main.async {
+                    cell.setAvatarImage(image)
                 }
             case .failure(let error):
                 print(error.localizedDescription)
