@@ -11,29 +11,39 @@ final class SceneDelegate: UIResponder, UIWindowSceneDelegate {
     ) {
         guard let windowScene = (scene as? UIWindowScene) else { return }
         window = UIWindow(windowScene: windowScene)
+        window?.rootViewController = FeedAssembly.createFeedModule()
+        window?.makeKeyAndVisible()
+    }
+}
+
+final class FeedAssembly {
+    static func createFeedModule() -> UIViewController {
         let networkClient = URLSessionNetworkClient()
         let apiService = JsonPlaceholderService(networkClient: networkClient)
         let imageCache = MemoryImageCache()
         let storageService = StorageService()
         let networkMonitor = NetworkMonitor()
+        
         networkMonitor.startMonitoring()
+        
         let postService = PostService(
             networkService: apiService,
             storageService: storageService,
             networkMonitor: networkMonitor
         )
+        
         let imageService = ImageService(
             imageLoader: networkClient,
             imageCache: imageCache,
             storageService: storageService,
             networkMonitor: networkMonitor
         )
-        window?.rootViewController = FeedViewController(
-            apiService: apiService,
-            storageService: storageService,
-            imageService: imageService,
-            postService: postService
+        
+        let viewModel = FeedViewModel(
+            postService: postService,
+            imageService: imageService
         )
-        window?.makeKeyAndVisible()
+        
+        return FeedViewController(viewModel: viewModel)
     }
 }

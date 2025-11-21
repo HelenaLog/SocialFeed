@@ -84,13 +84,19 @@ extension FeedTableViewCell {
         avatarImageView.image = UIImage(systemName: StringConstants.personCircleIcon)
     }
     
+    func updateLikeButton(isLiked: Bool) {
+        likeButton.isSelected = isLiked
+    }
+    
     func setAvatarImage(_ image: UIImage?) {
         UIView.transition(
             with: avatarImageView,
             duration: 0.3,
             options: .transitionCrossDissolve
         ) {
-            self.avatarImageView.image = image
+            if let image = image {
+                self.avatarImageView.image = image
+            }
         }
     }
 }

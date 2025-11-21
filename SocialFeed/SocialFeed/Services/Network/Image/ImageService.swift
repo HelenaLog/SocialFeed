@@ -73,7 +73,6 @@ private extension ImageService {
                 self.imageCache.setImageData(data, forKey: urlString)
                 self.storageService.saveImageData(data, for: urlString)
                 completion(.success(image))
-                
             case .failure:
                 self.loadFromStorage(urlString: urlString, completion: completion)
             }

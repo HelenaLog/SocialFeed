@@ -2,7 +2,7 @@ import CoreData
 
 protocol StorageType {
     func savePosts(_ posts: [DisplayPost])
-    func fetchPosts(completion: @escaping (Result<[DisplayPost], StorageError>) -> Void)
+    func fetchPosts(page: Int, limit: Int, completion: @escaping (Result<[DisplayPost], StorageError>) -> Void)
     func toggleLike(for postId: Int)
     func saveImageData(_ imageData: Data, for urlString: String)
     func getImageData(for urlString: String, completion: @escaping (Result<Data?, StorageError>) -> Void)
@@ -60,10 +60,11 @@ extension StorageService: StorageType {
         }
     }
     
-    func fetchPosts(completion: @escaping (Result<[DisplayPost], StorageError>) -> Void) {
+    func fetchPosts(page: Int, limit: Int, completion: @escaping (Result<[DisplayPost], StorageError>) -> Void) {
         let request: NSFetchRequest<PostEntity> = PostEntity.fetchRequest()
         request.sortDescriptors = [NSSortDescriptor(key: "id", ascending: true)]
-        
+        request.fetchLimit = limit
+        request.fetchOffset = (page - 1) * limit
         persistentContainer.performBackgroundTask { context in
             do {
                 let postEntities = try context.fetch(request)

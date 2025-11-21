@@ -1,11 +1,12 @@
 import Foundation
 
-protocol PostServiceProtocol {
+protocol PostServiceType {
     func fetchPosts(
         page: Int,
         limit: Int,
         completion: @escaping (Result<[DisplayPost], Error>) -> Void
     )
+    func toggleLike(for postId: Int)
 }
 
 final class PostService {
@@ -31,7 +32,7 @@ final class PostService {
 
 // MARK: PostServiceProtocol
 
-extension PostService: PostServiceProtocol {
+extension PostService: PostServiceType {
     func fetchPosts(
         page: Int,
         limit: Int,
@@ -40,8 +41,12 @@ extension PostService: PostServiceProtocol {
         if networkMonitor.isConnected {
             loadFromNetwork(page: page, limit: limit, completion: completion)
         } else {
-            loadFromStorage(completion: completion)
+            loadFromStorage(page: page, limit: limit, completion: completion)
         }
+    }
+    
+    func toggleLike(for postId: Int) {
+        storageService.toggleLike(for: postId)
     }
 }
 
@@ -59,14 +64,14 @@ private extension PostService {
                 self.storageService.savePosts(displayPosts)
                 completion(.success(displayPosts))
             case .failure(let error):
-                self.loadFromStorage(completion: completion)
+                self.loadFromStorage(page: page, limit: limit, completion: completion)
                 print(error.localizedDescription)
             }
         }
     }
     
-    func loadFromStorage(completion: @escaping (Result<[DisplayPost], Error>) -> Void) {
-        storageService.fetchPosts { result in
+    func loadFromStorage(page: Int, limit: Int, completion: @escaping (Result<[DisplayPost], Error>) -> Void) {
+        storageService.fetchPosts(page: page, limit: limit) { result in
             switch result {
             case .success(let posts):
                 completion(.success(posts))

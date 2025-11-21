@@ -1,24 +1,29 @@
 import UIKit
 
+enum FeedState {
+    case loading
+    case success
+    case empty
+    case error(String)
+}
+
 final class FeedViewController: UIViewController {
     
     // MARK: Private Properties
+
+    private var viewModel: FeedViewModelProtocol
     
-    private let apiService: APIServiceType
-    private let storageService: StorageType
-    private let imageService: ImageServiceType
-    private let postService: PostServiceProtocol
-    
-    private var posts = [DisplayPost]()
-    
-    private var currentPage = 1
-    private let limit = 10
-    private var hasMorePosts = true
+    private var currentState: FeedState = .loading {
+        didSet {
+            set(currentState)
+        }
+    }
     
     private let tableView: UITableView = {
         let tableView = UITableView()
         tableView.backgroundColor = .systemPink
         tableView.showsVerticalScrollIndicator = false
+        tableView.allowsSelection = false
         tableView.register(
             FeedTableViewCell.self,
             forCellReuseIdentifier: FeedTableViewCell.identifier
@@ -27,19 +32,26 @@ final class FeedViewController: UIViewController {
         return tableView
     }()
     
+    private let refreshControl: UIRefreshControl = {
+        let refreshControl = UIRefreshControl()
+        refreshControl.tintColor = .systemBlue
+        refreshControl.attributedTitle = NSAttributedString(string: "Refreshing...")
+        return refreshControl
+    }()
+    
+    private let activityIndicator: UIActivityIndicatorView = {
+        let indicator = UIActivityIndicatorView(style: .large)
+        indicator.hidesWhenStopped = true
+        indicator.translatesAutoresizingMaskIntoConstraints = false
+        return indicator
+    }()
+    
     // MARK: Init
     
-    init(
-        apiService: APIServiceType,
-        storageService: StorageType,
-        imageService: ImageServiceType,
-        postService: PostServiceProtocol
-    ) {
-        self.apiService = apiService
-        self.storageService = storageService
-        self.imageService = imageService
-        self.postService = postService
+    init(viewModel: FeedViewModelProtocol) {
+        self.viewModel = viewModel
         super.init(nibName: nil, bundle: nil)
+        setupBindables()
     }
     
     required init?(coder: NSCoder) {
@@ -54,6 +66,7 @@ final class FeedViewController: UIViewController {
         setupLayout()
         setupDelegates()
         setupAppearance()
+        setupRefreshControl()
         fetchPosts()
     }
 }
@@ -61,20 +74,17 @@ final class FeedViewController: UIViewController {
 // MARK: - UITableViewDelegate
 
 extension FeedViewController: UITableViewDelegate {
-    func tableView(_ tableView: UITableView, didSelectRowAt indexPath: IndexPath) {
-        tableView.deselectRow(at: indexPath, animated: true)
-    }
     
-    func scrollViewDidEndDragging(_ scrollView: UIScrollView, willDecelerate decelerate: Bool) {
-        let offsetY = scrollView.contentOffset.y
-        let contentHeight = scrollView.contentSize.height
-        let height = scrollView.frame.size.height
-        
-        if offsetY > .zero && offsetY >= (contentHeight - height) {
-            guard hasMorePosts == true else { return }
-            currentPage += 1
-            print(currentPage)
-            fetchPosts()
+    func scrollViewWillEndDragging(
+        _ scrollView: UIScrollView,
+        withVelocity velocity: CGPoint,
+        targetContentOffset: UnsafeMutablePointer<CGPoint>
+    ) {
+        if shouldLoadNextPage(
+            scrollView: scrollView,
+            targetOffsetY: targetContentOffset.pointee.y,
+            screensToLoadNextPage: 2.0) {
+            viewModel.fetchMorePosts()
         }
     }
 }
@@ -83,7 +93,7 @@ extension FeedViewController: UITableViewDelegate {
 
 extension FeedViewController: UITableViewDataSource {
     func tableView(_ tableView: UITableView, numberOfRowsInSection section: Int) -> Int {
-        posts.count
+        viewModel.numberOfItems()
     }
     
     func tableView(_ tableView: UITableView, cellForRowAt indexPath: IndexPath) -> UITableViewCell {
@@ -93,13 +103,12 @@ extension FeedViewController: UITableViewDataSource {
         ) as? FeedTableViewCell else {
             return UITableViewCell()
         }
-        let post = posts[indexPath.row]
+        let post = viewModel.item(at: indexPath.row)
         cell.configure(with: post)
-        fetchAvatar(for: cell, at: indexPath, with: post.avatarURL)
+        fetchAvatar(for: cell, with: post)
         cell.onLikeButtonTapped = { [weak self] in
             guard let self else { return }
-            self.posts[indexPath.row].isLiked.toggle()
-            self.storageService.toggleLike(for: post.id)
+            self.viewModel.toggleLike(for: post.id, at: indexPath.row)
         }
         return cell
     }
@@ -109,44 +118,76 @@ extension FeedViewController: UITableViewDataSource {
 
 private extension FeedViewController {
     
-    func fetchPosts() {
-        postService.fetchPosts(page: currentPage, limit: limit) { [weak self] result in
-            guard let self else { return }
-            switch result {
-            case .success(let posts):
-                self.posts.append(contentsOf: posts)
-                DispatchQueue.main.async {
-                    self.tableView.reloadData()
-                }
-            case .failure(let error):
-                print(error.localizedDescription)
+    func setupBindables() {
+        viewModel.stateChanged = { [weak self] state in
+            guard let self = self else { return }
+            DispatchQueue.main.async {
+                self.currentState = state
             }
         }
+        
+        viewModel.updateLikeButton = { [weak self] index, isLiked in
+            guard let self else { return }
+            DispatchQueue.main.async {
+                let indexPath = IndexPath(row: index, section: .zero)
+                if let cell = self.tableView.cellForRow(at: indexPath) as? FeedTableViewCell {
+                    cell.updateLikeButton(isLiked: isLiked)
+                }
+            }
+        }
+    }
+    
+    func setupRefreshControl() {
+        refreshControl.addTarget(self, action: #selector(handleRefresh), for: .valueChanged)
+        tableView.refreshControl = refreshControl
+    }
+    
+    @objc func handleRefresh() {
+        viewModel.refreshPosts()
+    }
+    
+    
+    func fetchPosts() {
+        viewModel.fetchPosts()
     }
     
     func fetchAvatar(
         for cell: FeedTableViewCell,
-        at indexPath: IndexPath,
-        with urlString: String
+        with post: DisplayPost
     ) {
-        imageService.fetchImage(from: urlString) { result in
-            switch result {
-            case .success(let image):
-                DispatchQueue.main.async {
-                    cell.setAvatarImage(image)
-                }
-            case .failure(let error):
-                print(error.localizedDescription)
+        viewModel.fetchAvatar(for: post.avatarURL) { image in
+            DispatchQueue.main.async {
+                cell.setAvatarImage(image)
             }
         }
     }
     
+    func shouldLoadNextPage(
+        scrollView: UIScrollView,
+        targetOffsetY: CGFloat,
+        screensToLoadNextPage: Double
+    ) -> Bool {
+        let viewHeight = scrollView.bounds.height
+        let contentHeight = scrollView.contentSize.height
+        let triggerDistance = viewHeight * screensToLoadNextPage
+        let remainingDistance = contentHeight - viewHeight - targetOffsetY
+        return remainingDistance <= triggerDistance
+    }
+    
     func embedViews() {
-        view.addSubview(tableView)
+        [
+            activityIndicator,
+            tableView
+        ].forEach {
+            view.addSubview($0)
+        }
     }
     
     func setupLayout() {
         NSLayoutConstraint.activate([
+            activityIndicator.centerXAnchor.constraint(equalTo: view.centerXAnchor),
+            activityIndicator.centerYAnchor.constraint(equalTo: view.centerYAnchor),
+            
             tableView.topAnchor.constraint(equalTo: view.safeAreaLayoutGuide.topAnchor),
             tableView.leadingAnchor.constraint(equalTo: view.leadingAnchor),
             tableView.trailingAnchor.constraint(equalTo: view.trailingAnchor),
@@ -161,5 +202,35 @@ private extension FeedViewController {
     func setupDelegates() {
         tableView.delegate = self
         tableView.dataSource = self
+    }
+    
+    func set(_ state: FeedState) {
+        switch state {
+        case .success:
+            activityIndicator.stopAnimating()
+            tableView.isHidden = false
+            tableView.reloadData()
+            if refreshControl.isRefreshing {
+                refreshControl.endRefreshing()
+            }
+            
+        case .empty:
+            activityIndicator.stopAnimating()
+            tableView.isHidden = true
+            if refreshControl.isRefreshing {
+                refreshControl.endRefreshing()
+            }
+            
+        case .error(let description):
+            activityIndicator.stopAnimating()
+            tableView.isHidden = true
+            if refreshControl.isRefreshing {
+                refreshControl.endRefreshing()
+            }
+            
+        case .loading:
+            activityIndicator.startAnimating()
+            tableView.isHidden = true
+        }
     }
 }
