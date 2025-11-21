@@ -28,8 +28,19 @@ extension ImageService: ImageServiceType {
         from urlString: String,
         completion: @escaping (Result<UIImage, NetworkError>) -> Void
     ) {
+        loadFromNetwork(urlString: urlString, completion: completion)
+    }
+}
+
+// MARK: - Private Methods
+
+private extension ImageService {
+    func loadFromNetwork(
+        urlString: String,
+        completion: @escaping (Result<UIImage, NetworkError>) -> Void
+    ) {
         guard let url = URL(string: urlString) else {
-            completion(.failure(.invalidData))
+            completion(.failure(.unableToComplete))
             return
         }
         
@@ -50,8 +61,27 @@ extension ImageService: ImageServiceType {
                 self.imageCache.setImageData(data, forKey: urlString)
                 self.storageService.saveImageData(data, for: urlString)
                 completion(.success(image))
+                
             case .failure(let error):
-                completion(.failure(error))
+                self.loadFromStorage(urlString: urlString, completion: completion)
+            }
+        }
+    }
+    
+    func loadFromStorage(
+        urlString: String,
+        completion: @escaping (Result<UIImage, NetworkError>) -> Void
+    ) {
+        storageService.getImageData(for: urlString) { result in
+            switch result {
+            case .success(let data):
+                if let data = data, let image = UIImage(data: data) {
+                    completion(.success(image))
+                } else {
+                    completion(.failure(.invalidData))
+                }
+            case .failure:
+                completion(.failure(.invalidData))
             }
         }
     }
