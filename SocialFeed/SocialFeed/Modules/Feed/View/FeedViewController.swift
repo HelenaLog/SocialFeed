@@ -7,6 +7,7 @@ final class FeedViewController: UIViewController {
     private let apiService: APIServiceType
     private let storageService: StorageType
     private let imageService: ImageServiceType
+    private let postService: PostServiceProtocol
     
     private var posts = [DisplayPost]()
     
@@ -30,11 +31,13 @@ final class FeedViewController: UIViewController {
     init(
         apiService: APIServiceType,
         storageService: StorageType,
-        imageService: ImageServiceType
+        imageService: ImageServiceType,
+        postService: PostServiceProtocol
     ) {
         self.apiService = apiService
         self.storageService = storageService
         self.imageService = imageService
+        self.postService = postService
         super.init(nibName: nil, bundle: nil)
     }
     
@@ -81,6 +84,7 @@ extension FeedViewController: UITableViewDataSource {
         fetchAvatar(for: cell, at: indexPath, with: post.avatarURL)
         cell.onLikeButtonTapped = { [weak self] in
             guard let self else { return }
+            self.posts[indexPath.row].isLiked.toggle()
             self.storageService.toggleLike(for: post.id)
         }
         return cell
@@ -90,19 +94,17 @@ extension FeedViewController: UITableViewDataSource {
 // MARK: - Private Methods
 
 private extension FeedViewController {
+    
     func fetchPosts() {
-        apiService.fetchPosts(page: currentPage, limit: limit) { [weak self] result in
+        postService.fetchPosts(page: currentPage, limit: limit) { [weak self] result in
             guard let self else { return }
             switch result {
             case .success(let posts):
-                let displayPosts = posts.map { DisplayPost(from: $0) }
-                self.posts.append(contentsOf: displayPosts)
-                self.storageService.savePosts(displayPosts)
+                self.posts.append(contentsOf: posts)
                 DispatchQueue.main.async {
                     self.tableView.reloadData()
                 }
             case .failure(let error):
-                loadPosts()
                 print(error.localizedDescription)
             }
         }
@@ -118,21 +120,6 @@ private extension FeedViewController {
             case .success(let image):
                 DispatchQueue.main.async {
                     cell.setAvatarImage(image)
-                }
-            case .failure(let error):
-                print(error.localizedDescription)
-            }
-        }
-    }
-    
-    func loadPosts() {
-        storageService.fetchPosts { [weak self] result in
-            guard let self else { return }
-            switch result {
-            case .success(let posts):
-                self.posts = posts
-                DispatchQueue.main.async {
-                    self.tableView.reloadData()
                 }
             case .failure(let error):
                 print(error.localizedDescription)

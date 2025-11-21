@@ -12,17 +12,20 @@ final class ImageService {
     private let imageLoader: ImageLoader
     private let imageCache: ImageCache
     private let storageService: StorageType
+    private let networkMonitor: NetworkReachability
     
     // MARK: Init
     
     init(
         imageLoader: ImageLoader,
         imageCache: ImageCache,
-        storageService: StorageType
+        storageService: StorageType,
+        networkMonitor: NetworkReachability
     ) {
         self.imageLoader = imageLoader
         self.imageCache = imageCache
         self.storageService = storageService
+        self.networkMonitor = networkMonitor
     }
 }
 
@@ -33,7 +36,11 @@ extension ImageService: ImageServiceType {
         from urlString: String,
         completion: @escaping (Result<UIImage, ImageServiceError>) -> Void
     ) {
-        loadFromNetwork(urlString: urlString, completion: completion)
+        if networkMonitor.isConnected {
+            loadFromNetwork(urlString: urlString, completion: completion)
+        } else {
+            loadFromStorage(urlString: urlString, completion: completion)
+        }
     }
 }
 
@@ -67,7 +74,7 @@ private extension ImageService {
                 self.storageService.saveImageData(data, for: urlString)
                 completion(.success(image))
                 
-            case .failure(let error):
+            case .failure:
                 self.loadFromStorage(urlString: urlString, completion: completion)
             }
         }

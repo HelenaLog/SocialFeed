@@ -16,7 +16,7 @@ final class NetworkMonitor: NetworkReachability {
     
     // MARK: Init
     
-    private init() {
+    init() {
         monitor = NWPathMonitor()
     }
     
