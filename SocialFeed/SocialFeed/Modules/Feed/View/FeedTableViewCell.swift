@@ -2,6 +2,8 @@ import UIKit
 
 final class FeedTableViewCell: UITableViewCell {
     
+    var onLikeButtonTapped: (() -> Void)?
+    
     // MARK: Static Properties
     
     static let identifier = StringConstants.identifier
@@ -172,6 +174,7 @@ private extension FeedTableViewCell {
     @objc
     func likeTapped() {
         likeButton.isSelected.toggle()
+        onLikeButtonTapped?()
     }
 }
 

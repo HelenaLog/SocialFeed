@@ -16,4 +16,13 @@ struct DisplayPost {
         self.isLiked = false
         self.avatarURL = "https://picsum.photos/seed/\(userId)200/200"
     }
+    
+    init(from entity: PostEntity) {
+        self.userId = Int(entity.userId)
+        self.id = Int(entity.id)
+        self.title = entity.title ?? String()
+        self.body = entity.body ?? String()
+        self.isLiked = entity.isLiked
+        self.avatarURL = entity.avatarURL ?? "https://picsum.photos/seed/\(entity.userId)200/200"
+    }
 }

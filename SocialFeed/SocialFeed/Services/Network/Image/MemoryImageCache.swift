@@ -5,6 +5,7 @@ final class MemoryImageCache {
     // MARK: Private Properties
     
     private let cache = NSCache<NSString, UIImage>()
+    private let dataCache = NSCache<NSString, NSData>()
     
     // MARK: Init
     
@@ -14,12 +15,11 @@ final class MemoryImageCache {
 // MARK: - ImageCache
 
 extension MemoryImageCache: ImageCache {
-    
-    func getImage(forKey key: String) -> UIImage? {
-        return cache.object(forKey: key as NSString)
+    func getImageData(forKey key: String) -> Data? {
+        return dataCache.object(forKey: key as NSString) as Data?
     }
     
-    func setImage(_ image: UIImage, forKey key: String) {
-        cache.setObject(image, forKey: key as NSString)
+    func setImageData(_ data: Data, forKey key: String) {
+        dataCache.setObject(data as NSData, forKey: key as NSString)
     }
 }

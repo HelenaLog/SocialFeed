@@ -5,6 +5,7 @@ final class FeedViewController: UIViewController {
     // MARK: Private Properties
     
     private let apiService: APIServiceType
+    private let storageService: StorageType
     private let imageService: ImageServiceType
     
     private var posts = [DisplayPost]()
@@ -28,9 +29,11 @@ final class FeedViewController: UIViewController {
     
     init(
         apiService: APIServiceType,
+        storageService: StorageType,
         imageService: ImageServiceType
     ) {
         self.apiService = apiService
+        self.storageService = storageService
         self.imageService = imageService
         super.init(nibName: nil, bundle: nil)
     }
@@ -76,6 +79,10 @@ extension FeedViewController: UITableViewDataSource {
         let post = posts[indexPath.row]
         cell.configure(with: post)
         fetchAvatar(for: cell, at: indexPath, with: post.avatarURL)
+        cell.onLikeButtonTapped = { [weak self] in
+            guard let self else { return }
+            self.storageService.toggleLike(for: post.id)
+        }
         return cell
     }
 }
@@ -90,10 +97,12 @@ private extension FeedViewController {
             case .success(let posts):
                 let displayPosts = posts.map { DisplayPost(from: $0) }
                 self.posts.append(contentsOf: displayPosts)
+                self.storageService.savePosts(displayPosts)
                 DispatchQueue.main.async {
                     self.tableView.reloadData()
                 }
             case .failure(let error):
+                loadPosts()
                 print(error.localizedDescription)
             }
         }
@@ -109,6 +118,21 @@ private extension FeedViewController {
             case .success(let image):
                 DispatchQueue.main.async {
                     cell.setAvatarImage(image)
+                }
+            case .failure(let error):
+                print(error.localizedDescription)
+            }
+        }
+    }
+    
+    func loadPosts() {
+        storageService.fetchPosts { [weak self] result in
+            guard let self else { return }
+            switch result {
+            case .success(let posts):
+                self.posts = posts
+                DispatchQueue.main.async {
+                    self.tableView.reloadData()
                 }
             case .failure(let error):
                 print(error.localizedDescription)

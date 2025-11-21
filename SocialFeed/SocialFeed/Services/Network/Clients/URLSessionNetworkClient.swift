@@ -56,7 +56,7 @@ extension URLSessionNetworkClient: NetworkClient {
 }
 
 extension URLSessionNetworkClient: ImageLoader {
-    func loadImage(from url: URL, completion: @escaping (Result<UIImage, NetworkError>) -> Void) {
+    func loadImage(from url: URL, completion: @escaping (Result<Data, NetworkError>) -> Void) {
         let request = URLRequest(url: url)
         
         urlSession.dataTask(with: request) { data, response, error in
@@ -75,11 +75,7 @@ extension URLSessionNetworkClient: ImageLoader {
                 return
             }
             
-            if let image = UIImage(data: data) {
-                completion(.success(image))
-            } else {
-                completion(.failure(.invalidDecode))
-            }
+            completion(.success(data))
         }.resume()
     }
 }

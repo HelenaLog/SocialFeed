@@ -3,9 +3,9 @@ import CoreData
 protocol StorageType {
     func savePosts(_ posts: [DisplayPost])
     func fetchPosts(completion: @escaping (Result<[DisplayPost], Error>) -> Void)
-    func saveImageData(_ imageData: Data, for postId: Int)
-    func toggleLike(for postId: Int64)
-    func getImageData(for postId: Int, completion: @escaping (Result<Data?, Error>) -> Void)
+    func toggleLike(for postId: Int)
+    func saveImageData(_ imageData: Data, for urlString: String)
+    func getImageData(for urlString: String, completion: @escaping (Result<Data?, Error>) -> Void)
 }
 
 final class StorageService {
@@ -63,7 +63,6 @@ extension StorageService: StorageType {
     func fetchPosts(completion: @escaping (Result<[DisplayPost], Error>) -> Void) {
         let request: NSFetchRequest<PostEntity> = PostEntity.fetchRequest()
         request.sortDescriptors = [NSSortDescriptor(key: "id", ascending: true)]
-        request.fetchLimit = 1
         
         persistentContainer.performBackgroundTask { context in
             do {
@@ -81,7 +80,7 @@ extension StorageService: StorageType {
         }
     }
     
-    func toggleLike(for postId: Int64) {
+    func toggleLike(for postId: Int) {
         let request: NSFetchRequest<PostEntity> = PostEntity.fetchRequest()
         request.predicate = NSPredicate(format: "id == %d", postId)
         
@@ -98,38 +97,39 @@ extension StorageService: StorageType {
         }
     }
     
-    func saveImageData(_ imageData: Data, for postId: Int) {
+    func saveImageData(_ imageData: Data, for urlString: String) {
         persistentContainer.performBackgroundTask { context in
             let request: NSFetchRequest<PostEntity> = PostEntity.fetchRequest()
-            request.predicate = NSPredicate(format: "id == %d", postId)
-            request.fetchLimit = 1
-            
+            request.predicate = NSPredicate(format: "avatarURL == %@", urlString)
+            context.mergePolicy = NSMergePolicy.mergeByPropertyObjectTrump
             do {
                 if let postEntity = try context.fetch(request).first {
                     postEntity.avatarImageData = imageData
                     try context.save()
                 }
             } catch {
+                print("Error saving image data for URL: \(urlString), error: \(error)")
                 context.rollback()
             }
         }
     }
-    
-    func getImageData(for postId: Int, completion: @escaping (Result<Data?, Error>) -> Void) {
+
+    func getImageData(for urlString: String, completion: @escaping (Result<Data?, Error>) -> Void) {
         persistentContainer.performBackgroundTask { context in
             let request: NSFetchRequest<PostEntity> = PostEntity.fetchRequest()
-            request.predicate = NSPredicate(format: "id == %d", postId)
-            request.fetchLimit = 1
+            request.predicate = NSPredicate(format: "avatarURL == %@", urlString)
             
             do {
-                guard let postEntity = try context.fetch(request).first else {
+                guard let postEntity = try context.fetch(request).first,
+                let imageData = postEntity.avatarImageData
+                else {
                     DispatchQueue.main.async {
                         completion(.success(nil))
                     }
                     return
                 }
                 DispatchQueue.main.async {
-                    completion(.success(postEntity.avatarImageData))
+                    completion(.success(imageData))
                 }
             } catch {
                 DispatchQueue.main.async {

@@ -1,6 +1,6 @@
 import UIKit
 
 protocol ImageCache {
-    func getImage(forKey key: String) -> UIImage?
-    func setImage(_ image: UIImage, forKey key: String)
+    func getImageData(forKey key: String) -> Data?
+    func setImageData(_ data: Data, forKey key: String)
 }
