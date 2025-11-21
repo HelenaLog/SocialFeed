@@ -13,7 +13,7 @@ final class FeedViewController: UIViewController {
 
     private var viewModel: FeedViewModelProtocol
     
-    private var currentState: FeedState = .loading {
+    private var currentState: FeedState = .error("vvhjhkhkjk") {
         didSet {
             set(currentState)
         }
@@ -44,6 +44,13 @@ final class FeedViewController: UIViewController {
         indicator.hidesWhenStopped = true
         indicator.translatesAutoresizingMaskIntoConstraints = false
         return indicator
+    }()
+    
+    private let errorView: ErrorView = {
+        let view = ErrorView()
+        view.isHidden = true
+        view.translatesAutoresizingMaskIntoConstraints = false
+        return view
     }()
     
     // MARK: Init
@@ -177,7 +184,8 @@ private extension FeedViewController {
     func embedViews() {
         [
             activityIndicator,
-            tableView
+            tableView,
+            errorView
         ].forEach {
             view.addSubview($0)
         }
@@ -191,7 +199,12 @@ private extension FeedViewController {
             tableView.topAnchor.constraint(equalTo: view.safeAreaLayoutGuide.topAnchor),
             tableView.leadingAnchor.constraint(equalTo: view.leadingAnchor),
             tableView.trailingAnchor.constraint(equalTo: view.trailingAnchor),
-            tableView.bottomAnchor.constraint(equalTo: view.safeAreaLayoutGuide.bottomAnchor)
+            tableView.bottomAnchor.constraint(equalTo: view.safeAreaLayoutGuide.bottomAnchor),
+            
+            errorView.topAnchor.constraint(equalTo: view.safeAreaLayoutGuide.topAnchor),
+            errorView.leadingAnchor.constraint(equalTo: view.leadingAnchor),
+            errorView.trailingAnchor.constraint(equalTo: view.trailingAnchor),
+            errorView.bottomAnchor.constraint(equalTo: view.safeAreaLayoutGuide.bottomAnchor),
         ])
     }
     
@@ -210,6 +223,7 @@ private extension FeedViewController {
             activityIndicator.stopAnimating()
             tableView.isHidden = false
             tableView.reloadData()
+            errorView.isHidden = true
             if refreshControl.isRefreshing {
                 refreshControl.endRefreshing()
             }
@@ -217,20 +231,23 @@ private extension FeedViewController {
         case .empty:
             activityIndicator.stopAnimating()
             tableView.isHidden = true
+            errorView.isHidden = true
             if refreshControl.isRefreshing {
                 refreshControl.endRefreshing()
             }
             
         case .error(let description):
             activityIndicator.stopAnimating()
+            errorView.isHidden = false
             tableView.isHidden = true
+            errorView.setErrorMessage(description)
             if refreshControl.isRefreshing {
                 refreshControl.endRefreshing()
             }
-            
         case .loading:
             activityIndicator.startAnimating()
             tableView.isHidden = true
+            errorView.isHidden = true
         }
     }
 }
