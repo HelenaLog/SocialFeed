@@ -2,10 +2,10 @@ import CoreData
 
 protocol StorageType {
     func savePosts(_ posts: [DisplayPost])
-    func fetchPosts(completion: @escaping (Result<[DisplayPost], Error>) -> Void)
+    func fetchPosts(completion: @escaping (Result<[DisplayPost], StorageError>) -> Void)
     func toggleLike(for postId: Int)
     func saveImageData(_ imageData: Data, for urlString: String)
-    func getImageData(for urlString: String, completion: @escaping (Result<Data?, Error>) -> Void)
+    func getImageData(for urlString: String, completion: @escaping (Result<Data?, StorageError>) -> Void)
 }
 
 final class StorageService {
@@ -60,7 +60,7 @@ extension StorageService: StorageType {
         }
     }
     
-    func fetchPosts(completion: @escaping (Result<[DisplayPost], Error>) -> Void) {
+    func fetchPosts(completion: @escaping (Result<[DisplayPost], StorageError>) -> Void) {
         let request: NSFetchRequest<PostEntity> = PostEntity.fetchRequest()
         request.sortDescriptors = [NSSortDescriptor(key: "id", ascending: true)]
         
@@ -74,7 +74,7 @@ extension StorageService: StorageType {
                 }
             } catch {
                 DispatchQueue.main.async {
-                    completion(.failure(error))
+                    completion(.failure(.fetchFailed))
                 }
             }
         }
@@ -108,23 +108,27 @@ extension StorageService: StorageType {
                     try context.save()
                 }
             } catch {
-                print("Error saving image data for URL: \(urlString), error: \(error)")
                 context.rollback()
             }
         }
     }
 
-    func getImageData(for urlString: String, completion: @escaping (Result<Data?, Error>) -> Void) {
+    func getImageData(for urlString: String, completion: @escaping (Result<Data?, StorageError>) -> Void) {
         persistentContainer.performBackgroundTask { context in
             let request: NSFetchRequest<PostEntity> = PostEntity.fetchRequest()
             request.predicate = NSPredicate(format: "avatarURL == %@", urlString)
             
             do {
-                guard let postEntity = try context.fetch(request).first,
-                let imageData = postEntity.avatarImageData
-                else {
+                guard let postEntity = try context.fetch(request).first else {
                     DispatchQueue.main.async {
                         completion(.success(nil))
+                    }
+                    return
+                }
+                
+                guard let imageData = postEntity.avatarImageData else {
+                    DispatchQueue.main.async {
+                        completion(.failure(.imageDataNotFound))
                     }
                     return
                 }
@@ -133,7 +137,7 @@ extension StorageService: StorageType {
                 }
             } catch {
                 DispatchQueue.main.async {
-                    completion(.failure(error))
+                    completion(.failure(.fetchFailed))
                 }
             }
         }

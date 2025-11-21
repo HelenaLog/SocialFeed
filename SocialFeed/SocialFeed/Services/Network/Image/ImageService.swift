@@ -1,5 +1,10 @@
 import UIKit
 
+enum ImageServiceError: Error {
+    case network(NetworkError)
+    case database(StorageError)
+}
+
 final class ImageService {
     
     // MARK: Private Properties
@@ -26,7 +31,7 @@ final class ImageService {
 extension ImageService: ImageServiceType {
     func fetchImage(
         from urlString: String,
-        completion: @escaping (Result<UIImage, NetworkError>) -> Void
+        completion: @escaping (Result<UIImage, ImageServiceError>) -> Void
     ) {
         loadFromNetwork(urlString: urlString, completion: completion)
     }
@@ -37,10 +42,10 @@ extension ImageService: ImageServiceType {
 private extension ImageService {
     func loadFromNetwork(
         urlString: String,
-        completion: @escaping (Result<UIImage, NetworkError>) -> Void
+        completion: @escaping (Result<UIImage, ImageServiceError>) -> Void
     ) {
         guard let url = URL(string: urlString) else {
-            completion(.failure(.unableToComplete))
+            completion(.failure(.network(.unableToComplete)))
             return
         }
         
@@ -55,7 +60,7 @@ private extension ImageService {
             switch result {
             case .success(let data):
                 guard let image = UIImage(data: data) else {
-                    completion(.failure(.invalidDecode))
+                    completion(.failure(.network(.invalidDecode)))
                     return
                 }
                 self.imageCache.setImageData(data, forKey: urlString)
@@ -70,7 +75,7 @@ private extension ImageService {
     
     func loadFromStorage(
         urlString: String,
-        completion: @escaping (Result<UIImage, NetworkError>) -> Void
+        completion: @escaping (Result<UIImage, ImageServiceError>) -> Void
     ) {
         storageService.getImageData(for: urlString) { result in
             switch result {
@@ -78,10 +83,10 @@ private extension ImageService {
                 if let data = data, let image = UIImage(data: data) {
                     completion(.success(image))
                 } else {
-                    completion(.failure(.invalidData))
+                    completion(.failure(.database(.objectNotFound)))
                 }
-            case .failure:
-                completion(.failure(.invalidData))
+            case .failure(let error):
+                completion(.failure(.database(error)))
             }
         }
     }
