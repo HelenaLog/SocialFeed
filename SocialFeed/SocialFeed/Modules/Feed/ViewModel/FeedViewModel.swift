@@ -39,7 +39,7 @@ final class FeedViewModel {
     /// Текущая страница для пагинации
     private var currentPage = 1
     /// Количество постов, загружаемых за один запрос
-    private let limit = 10
+    private let limit = 5
     /// Флаг наличия дополнительных постов для загрузки
     private var hasMorePosts = true
     /// Флаг выполнения запроса (предотвращение параллельных запрос)
@@ -48,8 +48,6 @@ final class FeedViewModel {
     private var isRefreshing = false
     /// Флаг, указывающий, что идет загрузка
     private var isLoading = false
-    /// Количество новых постов, загруженных при пагинации
-    private var newPostsCount: Int = .zero
     
     // MARK: Init
     
@@ -95,9 +93,15 @@ extension FeedViewModel: FeedViewModelProtocol {
     }
     
     func fetchPosts() {
+        currentState = .loading
         /// Проверка  возможности выполнения запроса
-        guard !isFetching, !isRefreshing, hasMorePosts else { return }
-        
+        guard
+            !isFetching,
+            !isRefreshing,
+            hasMorePosts
+        else {
+            return
+        }
         fetchPostData(isRefresh: false)
     }
     
@@ -145,28 +149,70 @@ private extension FeedViewModel {
             switch result {
             case .success(let newPosts):
                 /// Проверка наличия дополнительных постов
-                if newPosts.count < self.limit {
-                    self.hasMorePosts = false
-                }
+                self.hasMorePosts = newPosts.count >= self.limit
                 
-                /// Обновление данных постов
                 if isRefresh {
                     self.posts = newPosts
-                    if self.posts.isEmpty {
-                        self.currentState = .empty
-                    } else {
-                        self.currentState = .success
-                    }
                 } else {
-                    let startIndex = self.posts.count
                     self.posts.append(contentsOf: newPosts)
-                    self.newPostsCount = newPosts.count
-                    self.currentState = .pagination(startIndex: startIndex, count: newPosts.count)
                 }
+                
+                if self.posts.isEmpty {
+                    self.currentState = .empty
+                } else if isRefresh {
+                    self.currentState = .success
+                } else {
+                    let startIndex = self.posts.count - newPosts.count
+                    self.currentState = startIndex == 0
+                    ? .success
+                    : .pagination(startIndex: startIndex, count: newPosts.count)
+                }
+                //                /// Обновление данных постов
+                //                if isRefresh {
+                //                    self.posts = newPosts
+                //
+                //                    self.currentState = self.posts.isEmpty ? .empty : .success
+                //                } else {
+                //                    let startIndex = self.posts.count
+                //                    self.posts.append(contentsOf: newPosts)
+                //
+                //                    self.currentState = startIndex == .zero
+                //                    ? .success
+                //                    : .pagination(startIndex: startIndex, count: newPosts.count)
+                //                }
             case .failure(let error):
                 if !isRefresh { self.currentPage -= 1 }
-                self.currentState = .error(error.localizedDescription)
+                
+                // Добавьте отладочную печать
+                print("❌ FeedViewModel received error: \(error)")
+                
+                switch error {
+                case .network(let networkError):
+                    print("📡 Network error: \(networkError)")
+                    handleNetworkError(networkError)
+                case .database(let storageError):
+                    print("💾 Database error: \(storageError)")
+                    handleDatabaseError(storageError)
+                }
             }
+        }
+    }
+    
+    func handleNetworkError(_ networkError: NetworkError) {
+        if !posts.isEmpty {
+            currentState = .success
+            return
+        }
+        currentState = .error(networkError.localizedDescription)
+    }
+    
+    func handleDatabaseError(_ storageError: StorageError) {
+        switch storageError {
+        case .objectNotFound:
+            posts = []
+            currentState = .empty
+        default:
+            currentState = posts.isEmpty ? .empty : .error(storageError.localizedDescription)
         }
     }
 }

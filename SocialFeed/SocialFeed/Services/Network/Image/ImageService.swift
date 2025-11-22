@@ -5,6 +5,19 @@ enum ImageServiceError: Error {
     case database(StorageError)
 }
 
+// MARK: - LocalizedError
+
+extension ImageServiceError: LocalizedError {
+    var errorDescription: String? {
+        switch self {
+        case .network(let networkError):
+            return "Network error: \(networkError.localizedDescription)"
+        case .database(let storageError):
+            return "Storage error: \(storageError.localizedDescription)"
+        }
+    }
+}
+
 final class ImageService {
     
     // MARK: Private Properties

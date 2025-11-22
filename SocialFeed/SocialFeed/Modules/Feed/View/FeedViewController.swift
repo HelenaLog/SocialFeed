@@ -11,7 +11,7 @@ enum FeedState {
 final class FeedViewController: UIViewController {
     
     // MARK: Private Properties
-
+    
     private var viewModel: FeedViewModelProtocol
     
     private let tableView: UITableView = {
@@ -40,13 +40,6 @@ final class FeedViewController: UIViewController {
         return indicator
     }()
     
-    private let loadingMoreIndicator: UIActivityIndicatorView = {
-        let indicator = UIActivityIndicatorView(style: .medium)
-        indicator.hidesWhenStopped = true
-        indicator.frame = CGRect(x: 0, y: 0, width: 44, height: 44)
-        return indicator
-    }()
-    
     private let errorView: ErrorView = {
         let view = ErrorView()
         view.isHidden = true
@@ -54,8 +47,8 @@ final class FeedViewController: UIViewController {
         return view
     }()
     
-    private let emptyView: ErrorView = {
-        let view = ErrorView()
+    private let emptyView: EmptyView = {
+        let view = EmptyView()
         view.isHidden = true
         view.translatesAutoresizingMaskIntoConstraints = false
         return view
@@ -74,12 +67,11 @@ final class FeedViewController: UIViewController {
     }
     
     // MARK: Lifecycle
-
+    
     override func viewDidLoad() {
         super.viewDidLoad()
         configureUI()
         setupDelegates()
-        setupRefreshControl()
         fetchPosts()
     }
 }
@@ -150,11 +142,6 @@ private extension FeedViewController {
         }
     }
     
-    func setupRefreshControl() {
-        refreshControl.addTarget(self, action: #selector(handleRefresh), for: .valueChanged)
-        tableView.refreshControl = refreshControl
-    }
-    
     @objc func handleRefresh() {
         viewModel.refreshPosts()
     }
@@ -180,12 +167,12 @@ private extension FeedViewController {
         screensToLoadNextPage: Double
     ) -> Bool {
         let viewHeight = scrollView.bounds.height
-            let contentHeight = scrollView.contentSize.height
-            
-            // Защита от случаев, когда контент меньше экрана или при pull-to-refresh
-            guard contentHeight > viewHeight, targetOffsetY >= 0 else {
-                return false
-            }
+        let contentHeight = scrollView.contentSize.height
+        guard contentHeight > viewHeight,
+              targetOffsetY >= .zero
+        else {
+            return false
+        }
         let triggerDistance = viewHeight * screensToLoadNextPage
         let remainingDistance = contentHeight - viewHeight - targetOffsetY
         
@@ -194,15 +181,15 @@ private extension FeedViewController {
     
     func insertNewRows(startIndex: Int, count: Int) {
         guard count > .zero else { return }
-        
+        guard startIndex <= viewModel.numberOfItems() else { return }
         var indexPaths: [IndexPath] = []
         for row in startIndex..<(startIndex + count) {
             let indexPath = IndexPath(row: row, section: .zero)
             indexPaths.append(indexPath)
         }
-        tableView.beginUpdates()
-        tableView.insertRows(at: indexPaths, with: .automatic)
-        tableView.endUpdates()
+        tableView.performBatchUpdates {
+            tableView.insertRows(at: indexPaths, with: .automatic)
+        }
     }
     
     func setupDelegates() {
@@ -219,7 +206,6 @@ private extension FeedViewController {
         switch state {
         case .success:
             activityIndicator.stopAnimating()
-            loadingMoreIndicator.stopAnimating()
             tableView.isHidden = false
             errorView.isHidden = true
             emptyView.isHidden = true
@@ -230,7 +216,6 @@ private extension FeedViewController {
             tableView.tableFooterView = nil
         case .empty:
             activityIndicator.stopAnimating()
-            loadingMoreIndicator.stopAnimating()
             tableView.isHidden = true
             errorView.isHidden = true
             emptyView.isHidden = false
@@ -240,7 +225,6 @@ private extension FeedViewController {
             tableView.tableFooterView = nil
         case .error(let description):
             activityIndicator.stopAnimating()
-            loadingMoreIndicator.stopAnimating()
             errorView.isHidden = false
             tableView.isHidden = true
             emptyView.isHidden = true
@@ -251,13 +235,11 @@ private extension FeedViewController {
             tableView.tableFooterView = nil
         case .loading:
             activityIndicator.startAnimating()
-            loadingMoreIndicator.stopAnimating()
             tableView.isHidden = true
             errorView.isHidden = true
             emptyView.isHidden = true
         case .pagination(startIndex: let startIndex, count: let count):
             activityIndicator.stopAnimating()
-            loadingMoreIndicator.stopAnimating()
             tableView.isHidden = false
             errorView.isHidden = true
             emptyView.isHidden = true
@@ -265,7 +247,6 @@ private extension FeedViewController {
             if refreshControl.isRefreshing {
                 refreshControl.endRefreshing()
             }
-            tableView.tableFooterView = nil
         }
     }
     
@@ -273,7 +254,7 @@ private extension FeedViewController {
         embedViews()
         setupLayout()
         setupAppearance()
-        setupTableFooter()
+        setupRefreshControl()
     }
     
     func embedViews() {
@@ -291,8 +272,9 @@ private extension FeedViewController {
         view.backgroundColor = .systemBackground
     }
     
-    func setupTableFooter() {
-        tableView.tableFooterView = loadingMoreIndicator
+    func setupRefreshControl() {
+        refreshControl.addTarget(self, action: #selector(handleRefresh), for: .valueChanged)
+        tableView.refreshControl = refreshControl
     }
     
     func setupLayout() {

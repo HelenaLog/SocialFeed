@@ -5,6 +5,19 @@ enum PostServiceError: Error {
     case database(StorageError)
 }
 
+// MARK: - LocalizedError
+
+extension PostServiceError: LocalizedError {
+    var errorDescription: String? {
+        switch self {
+        case .network(let networkError):
+            return "Network error: \(networkError.localizedDescription)"
+        case .database(let storageError):
+            return "Database error: \(storageError.localizedDescription)"
+        }
+    }
+}
+
 final class PostService {
     
     // MARK: Private Properties

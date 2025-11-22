@@ -69,7 +69,6 @@ extension StorageService: StorageType {
             do {
                 let postEntities = try context.fetch(request)
                 let displayPosts = postEntities.map { PostViewItem(from: $0) }
-            
                 DispatchQueue.main.async {
                     completion(.success(displayPosts))
                 }
