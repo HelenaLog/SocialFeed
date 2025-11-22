@@ -23,11 +23,11 @@
 
 ### Главный экран с пагинацией
 
-<img src="Screenshots/main_screen_online.gif" width="300">
+<img src="SocialFeed/Screenshots/main_screen_online.gif" width="300">
 
 ### Сохранение лайков
 
-<img src="Screenshots/like-persistence.gif" width="300">
+<img src="SocialFeed/Screenshots/like-persistence.gif" width="300">
 
 ## 🛠 Технологии
 
