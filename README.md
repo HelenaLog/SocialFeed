@@ -27,7 +27,7 @@
 
 ### Сохранение лайков
 
-<img src="SocialFeed/Screenshots/like-persistence.gif" width="300">
+<img src="SocialFeed/Screenshots/like-persistance.gif" width="300">
 
 ## 🛠 Технологии
 
