@@ -17,19 +17,16 @@ final class FeedViewModel {
     
     // MARK: Public Properties
     
+    /// Closure для отслеживания изменения состояния
     var stateChanged: ((FeedState) -> Void)?
-    /// Флаг, указывающий на выполнение загрузки данных
-    var isLoading: Bool = false {
-        didSet {
-            reload?()
-        }
-    }
-    /// Closure для полного обновления таблицы
-    var reload: (() -> Void)?
     /// Closure для обновления состояния кнопки лайка в конкретной ячейке
     var updateLikeButton: ((Int, Bool) -> Void)?
-    /// Closure для отображения ошибок пользователю
-    var showError: ((String) -> Void)?
+    /// Текущее состояние
+    var currentState: FeedState = .loading {
+        didSet {
+            stateChanged?(currentState)
+        }
+    }
     
     // MARK: Private Properties
     
@@ -49,6 +46,10 @@ final class FeedViewModel {
     private var isFetching = false
     /// Флаг выполнения операции обновления (pull-to-refresh)
     private var isRefreshing = false
+    /// Флаг, указывающий, что идет загрузка
+    private var isLoading = false
+    /// Количество новых постов, загруженных при пагинации
+    private var newPostsCount: Int = .zero
     
     // MARK: Init
     
@@ -76,9 +77,8 @@ extension FeedViewModel: FeedViewModelProtocol {
     /// Загружает следующую страницу постов
     func fetchMorePosts() {
         /// Проверка возможности  загрузки дополнительных постов
-        guard !isFetching, !isRefreshing, hasMorePosts else { return }
+        guard !isFetching, !isRefreshing, !isLoading, hasMorePosts else { return }
         currentPage += 1
-        
         fetchPostData(isRefresh: false)
     }
     
@@ -91,13 +91,12 @@ extension FeedViewModel: FeedViewModelProtocol {
         isRefreshing = true
         hasMorePosts = true
         currentPage = 1
-        
         fetchPostData(isRefresh: true)
     }
     
     func fetchPosts() {
         /// Проверка  возможности выполнения запроса
-        guard !isFetching, hasMorePosts else { return }
+        guard !isFetching, !isRefreshing, hasMorePosts else { return }
         
         fetchPostData(isRefresh: false)
     }
@@ -107,7 +106,7 @@ extension FeedViewModel: FeedViewModelProtocol {
         posts[index].isLiked.toggle()
         let newLikeState = posts[index].isLiked
         updateLikeButton?(index, newLikeState)
-        /// Отправка изменений на сервер
+        /// Сохранение изменений
         postService.toggleLike(for: postId)
     }
     
@@ -132,8 +131,6 @@ private extension FeedViewModel {
         isFetching = true
         isLoading = true
         
-        stateChanged?(.loading)
-        
         /// Вызов сетевого сервиса
         postService.fetchPosts(page: currentPage, limit: limit) { [weak self] result in
             guard let self else { return }
@@ -148,27 +145,27 @@ private extension FeedViewModel {
             switch result {
             case .success(let newPosts):
                 /// Проверка наличия дополнительных постов
-                if posts.count < self.limit {
+                if newPosts.count < self.limit {
                     self.hasMorePosts = false
                 }
                 
+                /// Обновление данных постов
                 if isRefresh {
                     self.posts = newPosts
-                } else {
-                    self.posts.append(contentsOf: newPosts)
-                }
-                
-                DispatchQueue.main.async {
                     if self.posts.isEmpty {
-                        self.stateChanged?(.empty)
+                        self.currentState = .empty
                     } else {
-                        self.stateChanged?(.success)
+                        self.currentState = .success
                     }
+                } else {
+                    let startIndex = self.posts.count
+                    self.posts.append(contentsOf: newPosts)
+                    self.newPostsCount = newPosts.count
+                    self.currentState = .pagination(startIndex: startIndex, count: newPosts.count)
                 }
             case .failure(let error):
-                DispatchQueue.main.async {
-                    self.stateChanged?(.error(error.localizedDescription))
-                }
+                if !isRefresh { self.currentPage -= 1 }
+                self.currentState = .error(error.localizedDescription)
             }
         }
     }

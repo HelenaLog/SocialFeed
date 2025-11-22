@@ -5,6 +5,7 @@ enum FeedState {
     case success
     case empty
     case error(String)
+    case pagination(startIndex: Int, count: Int)
 }
 
 final class FeedViewController: UIViewController {
@@ -12,12 +13,6 @@ final class FeedViewController: UIViewController {
     // MARK: Private Properties
 
     private var viewModel: FeedViewModelProtocol
-    
-    private var currentState: FeedState = .error("vvhjhkhkjk") {
-        didSet {
-            set(currentState)
-        }
-    }
     
     private let tableView: UITableView = {
         let tableView = UITableView()
@@ -46,7 +41,21 @@ final class FeedViewController: UIViewController {
         return indicator
     }()
     
+    private let loadingMoreIndicator: UIActivityIndicatorView = {
+        let indicator = UIActivityIndicatorView(style: .medium)
+        indicator.hidesWhenStopped = true
+        indicator.frame = CGRect(x: 0, y: 0, width: 44, height: 44)
+        return indicator
+    }()
+    
     private let errorView: ErrorView = {
+        let view = ErrorView()
+        view.isHidden = true
+        view.translatesAutoresizingMaskIntoConstraints = false
+        return view
+    }()
+    
+    private let emptyView: ErrorView = {
         let view = ErrorView()
         view.isHidden = true
         view.translatesAutoresizingMaskIntoConstraints = false
@@ -69,10 +78,8 @@ final class FeedViewController: UIViewController {
 
     override func viewDidLoad() {
         super.viewDidLoad()
-        embedViews()
-        setupLayout()
+        configureUI()
         setupDelegates()
-        setupAppearance()
         setupRefreshControl()
         fetchPosts()
     }
@@ -129,7 +136,7 @@ private extension FeedViewController {
         viewModel.stateChanged = { [weak self] state in
             guard let self = self else { return }
             DispatchQueue.main.async {
-                self.currentState = state
+                self.set(state)
             }
         }
         
@@ -153,7 +160,6 @@ private extension FeedViewController {
         viewModel.refreshPosts()
     }
     
-    
     func fetchPosts() {
         viewModel.fetchPosts()
     }
@@ -175,20 +181,120 @@ private extension FeedViewController {
         screensToLoadNextPage: Double
     ) -> Bool {
         let viewHeight = scrollView.bounds.height
-        let contentHeight = scrollView.contentSize.height
+            let contentHeight = scrollView.contentSize.height
+            
+            // Защита от случаев, когда контент меньше экрана или при pull-to-refresh
+            guard contentHeight > viewHeight, targetOffsetY >= 0 else {
+                return false
+            }
         let triggerDistance = viewHeight * screensToLoadNextPage
         let remainingDistance = contentHeight - viewHeight - targetOffsetY
+        
         return remainingDistance <= triggerDistance
+    }
+    
+    func setupDelegates() {
+        tableView.delegate = self
+        tableView.dataSource = self
+    }
+}
+
+// MARK: - UI Configuration
+
+private extension FeedViewController {
+    
+    func set(_ state: FeedState) {
+        switch state {
+        case .success:
+            activityIndicator.stopAnimating()
+            loadingMoreIndicator.stopAnimating()
+            tableView.isHidden = false
+            errorView.isHidden = true
+            emptyView.isHidden = true
+            tableView.reloadData()
+            if refreshControl.isRefreshing {
+                refreshControl.endRefreshing()
+            }
+            tableView.tableFooterView = nil
+        case .empty:
+            activityIndicator.stopAnimating()
+            loadingMoreIndicator.stopAnimating()
+            tableView.isHidden = true
+            errorView.isHidden = true
+            emptyView.isHidden = false
+            if refreshControl.isRefreshing {
+                refreshControl.endRefreshing()
+            }
+            tableView.tableFooterView = nil
+        case .error(let description):
+            activityIndicator.stopAnimating()
+            loadingMoreIndicator.stopAnimating()
+            errorView.isHidden = false
+            tableView.isHidden = true
+            emptyView.isHidden = true
+            errorView.setErrorMessage(description)
+            if refreshControl.isRefreshing {
+                refreshControl.endRefreshing()
+            }
+            tableView.tableFooterView = nil
+        case .loading:
+            activityIndicator.startAnimating()
+            loadingMoreIndicator.stopAnimating()
+            tableView.isHidden = true
+            errorView.isHidden = true
+            emptyView.isHidden = true
+        case .pagination(startIndex: let startIndex, count: let count):
+            activityIndicator.stopAnimating()
+            loadingMoreIndicator.stopAnimating()
+            tableView.isHidden = false
+            errorView.isHidden = true
+            emptyView.isHidden = true
+            insertNewRows(startIndex: startIndex, count: count)
+            if refreshControl.isRefreshing {
+                refreshControl.endRefreshing()
+            }
+            tableView.tableFooterView = nil
+        }
+    }
+    
+    func insertNewRows(startIndex: Int, count: Int) {
+        guard count > .zero else { return }
+        
+        var indexPaths: [IndexPath] = []
+        for row in startIndex..<(startIndex + count) {
+            let indexPath = IndexPath(row: row, section: .zero)
+            indexPaths.append(indexPath)
+        }
+        tableView.beginUpdates()
+        tableView.insertRows(at: indexPaths, with: .automatic)
+        tableView.endUpdates()
+    }
+    
+    
+    func configureUI() {
+        embedViews()
+        setupLayout()
+        setupAppearance()
+        setupTableFooter()
     }
     
     func embedViews() {
         [
             activityIndicator,
             tableView,
-            errorView
+            errorView,
+            emptyView
         ].forEach {
             view.addSubview($0)
         }
+    }
+    
+    func setupAppearance() {
+        view.backgroundColor = .systemBackground
+    }
+    
+    func setupTableFooter() {
+        tableView.tableFooterView = loadingMoreIndicator
     }
     
     func setupLayout() {
@@ -205,49 +311,11 @@ private extension FeedViewController {
             errorView.leadingAnchor.constraint(equalTo: view.leadingAnchor),
             errorView.trailingAnchor.constraint(equalTo: view.trailingAnchor),
             errorView.bottomAnchor.constraint(equalTo: view.safeAreaLayoutGuide.bottomAnchor),
+            
+            emptyView.topAnchor.constraint(equalTo: view.safeAreaLayoutGuide.topAnchor),
+            emptyView.leadingAnchor.constraint(equalTo: view.leadingAnchor),
+            emptyView.trailingAnchor.constraint(equalTo: view.trailingAnchor),
+            emptyView.bottomAnchor.constraint(equalTo: view.safeAreaLayoutGuide.bottomAnchor)
         ])
-    }
-    
-    func setupAppearance() {
-        view.backgroundColor = .systemBackground
-    }
-    
-    func setupDelegates() {
-        tableView.delegate = self
-        tableView.dataSource = self
-    }
-    
-    func set(_ state: FeedState) {
-        switch state {
-        case .success:
-            activityIndicator.stopAnimating()
-            tableView.isHidden = false
-            tableView.reloadData()
-            errorView.isHidden = true
-            if refreshControl.isRefreshing {
-                refreshControl.endRefreshing()
-            }
-            
-        case .empty:
-            activityIndicator.stopAnimating()
-            tableView.isHidden = true
-            errorView.isHidden = true
-            if refreshControl.isRefreshing {
-                refreshControl.endRefreshing()
-            }
-            
-        case .error(let description):
-            activityIndicator.stopAnimating()
-            errorView.isHidden = false
-            tableView.isHidden = true
-            errorView.setErrorMessage(description)
-            if refreshControl.isRefreshing {
-                refreshControl.endRefreshing()
-            }
-        case .loading:
-            activityIndicator.startAnimating()
-            tableView.isHidden = true
-            errorView.isHidden = true
-        }
     }
 }

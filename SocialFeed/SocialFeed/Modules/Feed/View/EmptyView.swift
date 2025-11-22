@@ -1,16 +1,16 @@
 import UIKit
 
-final class ErrorView: UIView {
+final class EmptyView: UIView {
     
     // MARK: Callback
     
-    var onRetry: (() -> Void)?
+    var onRefresh: (() -> Void)?
     
     // MARK: Private Properties
     
     private let imageView: UIImageView = {
         let imageView = UIImageView()
-        imageView.image = UIImage(systemName: StringConstants.Icon.exclamationmark)
+        imageView.image = UIImage(systemName: StringConstants.Icon.shippingbox)
         imageView.contentMode = .scaleAspectFit
         imageView.tintColor = .blue
         imageView.translatesAutoresizingMaskIntoConstraints = false
@@ -28,10 +28,10 @@ final class ErrorView: UIView {
         return label
     }()
     
-    private let messageLabel: UILabel = {
+    private let subtitleLabel: UILabel = {
         let label = UILabel()
-        label.text = StringConstants.Title.message
-        label.font = UIFont.systemFont(ofSize: PointConstants.Font.messageSize)
+        label.text = StringConstants.Title.subtitle
+        label.font = UIFont.systemFont(ofSize: PointConstants.Font.subtitleSize)
         label.textAlignment = .center
         label.textColor = .secondaryLabel
         label.numberOfLines = .zero
@@ -64,26 +64,18 @@ final class ErrorView: UIView {
     }
 }
 
-// MARK: Public Methods
-
-extension ErrorView {
-    func setErrorMessage(_ message: String) {
-        messageLabel.text = message
-    }
-}
-
 // MARK: - Private Methods
 
-private extension ErrorView {
+private extension EmptyView {
     
-    @objc func retryButtonTapped() {
-        onRetry?()
+    @objc func refreshButtonTapped() {
+        onRefresh?()
     }
     
     func setupBehavior() {
         actionButton.addTarget(
             self,
-            action: #selector(retryButtonTapped),
+            action: #selector(refreshButtonTapped),
             for: .touchUpInside
         )
     }
@@ -92,7 +84,7 @@ private extension ErrorView {
         [
             imageView,
             titleLabel,
-            messageLabel,
+            subtitleLabel,
             actionButton
         ].forEach { addSubview($0) }
     }
@@ -102,17 +94,17 @@ private extension ErrorView {
             imageView.heightAnchor.constraint(equalToConstant: PointConstants.Image.height),
             imageView.widthAnchor.constraint(equalToConstant: PointConstants.Image.height),
             imageView.centerXAnchor.constraint(equalTo: centerXAnchor),
-            imageView.centerYAnchor.constraint(equalTo: centerYAnchor, constant: -PointConstants.Spacing.imageCenterYOffset),
+            imageView.centerYAnchor.constraint(equalTo: centerYAnchor, constant: -45),
             
             titleLabel.topAnchor.constraint(equalTo: imageView.bottomAnchor, constant: PointConstants.Spacing.titleTop),
             titleLabel.leadingAnchor.constraint(equalTo: leadingAnchor, constant: PointConstants.Spacing.leading),
             titleLabel.trailingAnchor.constraint(equalTo: trailingAnchor, constant: PointConstants.Spacing.trailing),
             
-            messageLabel.topAnchor.constraint(equalTo: titleLabel.bottomAnchor, constant: PointConstants.Spacing.subtitleTop),
-            messageLabel.leadingAnchor.constraint(equalTo: leadingAnchor, constant: PointConstants.Spacing.leading),
-            messageLabel.trailingAnchor.constraint(equalTo: trailingAnchor, constant: PointConstants.Spacing.trailing),
+            subtitleLabel.topAnchor.constraint(equalTo: titleLabel.bottomAnchor, constant: PointConstants.Spacing.subtitleTop),
+            subtitleLabel.leadingAnchor.constraint(equalTo: leadingAnchor, constant: PointConstants.Spacing.leading),
+            subtitleLabel.trailingAnchor.constraint(equalTo: trailingAnchor, constant: PointConstants.Spacing.trailing),
             
-            actionButton.topAnchor.constraint(equalTo: messageLabel.bottomAnchor, constant: PointConstants.Spacing.buttonTop),
+            actionButton.topAnchor.constraint(equalTo: subtitleLabel.bottomAnchor, constant: PointConstants.Spacing.buttonTop),
             actionButton.centerXAnchor.constraint(equalTo: centerXAnchor),
             actionButton.leadingAnchor.constraint(equalTo: leadingAnchor, constant: PointConstants.Spacing.buttonLeading),
             actionButton.trailingAnchor.constraint(equalTo: trailingAnchor, constant: PointConstants.Spacing.buttonTrailing),
@@ -123,7 +115,7 @@ private extension ErrorView {
 
 // MARK: - Constants
 
-private extension ErrorView {
+private extension EmptyView {
     
     // MARK: PointConstants
     
@@ -133,7 +125,7 @@ private extension ErrorView {
         
         enum Font {
             static let titleSize: CGFloat = 28
-            static let messageSize: CGFloat = 16
+            static let subtitleSize: CGFloat = 16
             static let buttonSize: CGFloat = 18
         }
         
@@ -169,16 +161,16 @@ private extension ErrorView {
     enum StringConstants {
         
         enum Title {
-            static let title = "Oops, something went wrong"
-            static let message = "We’ve encountered an unexpected error. Please try again."
+            static let title = "No Posts Yet"
+            static let subtitle = "Refresh your feed"
         }
         
         enum Icon {
-            static let exclamationmark = "exclamationmark.triangle.fill"
+            static let shippingbox = "bubble.left.and.bubble.right"
         }
         
         enum Button {
-            static let title = "Retry"
+            static let title = "Refresh"
         }
     }
 }
