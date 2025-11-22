@@ -5,7 +5,7 @@ protocol FeedViewModelProtocol {
     var updateLikeButton: ((Int, Bool) -> Void)? { get set }
     
     func numberOfItems() -> Int
-    func item(at index: Int) -> DisplayPost
+    func item(at index: Int) -> PostViewItem
     func fetchPosts()
     func toggleLike(for postId: Int, at index: Int)
     func fetchMorePosts()
@@ -31,7 +31,7 @@ final class FeedViewModel {
     // MARK: Private Properties
     
     /// Массив постов для отображения в ленте
-    private var posts = [DisplayPost]()
+    private var posts = [PostViewItem]()
     /// Сервис для работы с постами
     private let postService: PostServiceType
     /// Сервис для загрузки изображений
@@ -70,7 +70,7 @@ extension FeedViewModel: FeedViewModelProtocol {
         posts.count
     }
     
-    func item(at index: Int) -> DisplayPost {
+    func item(at index: Int) -> PostViewItem {
         posts[index]
     }
     

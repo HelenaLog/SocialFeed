@@ -16,7 +16,6 @@ final class FeedViewController: UIViewController {
     
     private let tableView: UITableView = {
         let tableView = UITableView()
-        tableView.backgroundColor = .systemPink
         tableView.showsVerticalScrollIndicator = false
         tableView.allowsSelection = false
         tableView.register(
@@ -166,7 +165,7 @@ private extension FeedViewController {
     
     func fetchAvatar(
         for cell: FeedTableViewCell,
-        with post: DisplayPost
+        with post: PostViewItem
     ) {
         viewModel.fetchAvatar(for: post.avatarURL) { image in
             DispatchQueue.main.async {
@@ -191,6 +190,19 @@ private extension FeedViewController {
         let remainingDistance = contentHeight - viewHeight - targetOffsetY
         
         return remainingDistance <= triggerDistance
+    }
+    
+    func insertNewRows(startIndex: Int, count: Int) {
+        guard count > .zero else { return }
+        
+        var indexPaths: [IndexPath] = []
+        for row in startIndex..<(startIndex + count) {
+            let indexPath = IndexPath(row: row, section: .zero)
+            indexPaths.append(indexPath)
+        }
+        tableView.beginUpdates()
+        tableView.insertRows(at: indexPaths, with: .automatic)
+        tableView.endUpdates()
     }
     
     func setupDelegates() {
@@ -256,20 +268,6 @@ private extension FeedViewController {
             tableView.tableFooterView = nil
         }
     }
-    
-    func insertNewRows(startIndex: Int, count: Int) {
-        guard count > .zero else { return }
-        
-        var indexPaths: [IndexPath] = []
-        for row in startIndex..<(startIndex + count) {
-            let indexPath = IndexPath(row: row, section: .zero)
-            indexPaths.append(indexPath)
-        }
-        tableView.beginUpdates()
-        tableView.insertRows(at: indexPaths, with: .automatic)
-        tableView.endUpdates()
-    }
-    
     
     func configureUI() {
         embedViews()

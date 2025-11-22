@@ -1,6 +1,6 @@
 import Foundation
 
-struct DisplayPost {
+struct PostViewItem {
     let userId: Int
     let id: Int
     let title: String

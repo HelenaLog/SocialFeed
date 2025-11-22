@@ -77,7 +77,7 @@ final class FeedTableViewCell: UITableViewCell {
 
 extension FeedTableViewCell {
     
-    func configure(with item: DisplayPost) {
+    func configure(with item: PostViewItem) {
         titleLabel.text = item.title
         bodyLabel.text = item.body
         likeButton.isSelected = item.isLiked

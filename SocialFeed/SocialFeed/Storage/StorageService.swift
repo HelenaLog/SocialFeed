@@ -1,8 +1,8 @@
 import CoreData
 
 protocol StorageType {
-    func savePosts(_ posts: [DisplayPost])
-    func fetchPosts(page: Int, limit: Int, completion: @escaping (Result<[DisplayPost], StorageError>) -> Void)
+    func savePosts(_ posts: [PostViewItem])
+    func fetchPosts(page: Int, limit: Int, completion: @escaping (Result<[PostViewItem], StorageError>) -> Void)
     func toggleLike(for postId: Int)
     func saveImageData(_ imageData: Data, for urlString: String)
     func getImageData(for urlString: String, completion: @escaping (Result<Data?, StorageError>) -> Void)
@@ -31,7 +31,7 @@ final class StorageService {
 
 extension StorageService: StorageType {
     
-    func savePosts(_ posts: [DisplayPost]) {
+    func savePosts(_ posts: [PostViewItem]) {
         
         persistentContainer.performBackgroundTask { context in
             context.mergePolicy = NSMergePolicy.mergeByPropertyObjectTrump
@@ -60,7 +60,7 @@ extension StorageService: StorageType {
         }
     }
     
-    func fetchPosts(page: Int, limit: Int, completion: @escaping (Result<[DisplayPost], StorageError>) -> Void) {
+    func fetchPosts(page: Int, limit: Int, completion: @escaping (Result<[PostViewItem], StorageError>) -> Void) {
         let request: NSFetchRequest<PostEntity> = PostEntity.fetchRequest()
         request.sortDescriptors = [NSSortDescriptor(key: "id", ascending: true)]
         request.fetchLimit = limit
@@ -68,7 +68,7 @@ extension StorageService: StorageType {
         persistentContainer.performBackgroundTask { context in
             do {
                 let postEntities = try context.fetch(request)
-                let displayPosts = postEntities.map { DisplayPost(from: $0) }
+                let displayPosts = postEntities.map { PostViewItem(from: $0) }
             
                 DispatchQueue.main.async {
                     completion(.success(displayPosts))
