@@ -167,31 +167,12 @@ private extension FeedViewModel {
                     ? .success
                     : .pagination(startIndex: startIndex, count: newPosts.count)
                 }
-                //                /// Обновление данных постов
-                //                if isRefresh {
-                //                    self.posts = newPosts
-                //
-                //                    self.currentState = self.posts.isEmpty ? .empty : .success
-                //                } else {
-                //                    let startIndex = self.posts.count
-                //                    self.posts.append(contentsOf: newPosts)
-                //
-                //                    self.currentState = startIndex == .zero
-                //                    ? .success
-                //                    : .pagination(startIndex: startIndex, count: newPosts.count)
-                //                }
             case .failure(let error):
                 if !isRefresh { self.currentPage -= 1 }
-                
-                // Добавьте отладочную печать
-                print("❌ FeedViewModel received error: \(error)")
-                
                 switch error {
                 case .network(let networkError):
-                    print("📡 Network error: \(networkError)")
                     handleNetworkError(networkError)
                 case .database(let storageError):
-                    print("💾 Database error: \(storageError)")
                     handleDatabaseError(storageError)
                 }
             }

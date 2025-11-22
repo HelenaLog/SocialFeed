@@ -73,6 +73,7 @@ final class FeedViewController: UIViewController {
         configureUI()
         setupDelegates()
         fetchPosts()
+        setupRefresh()
     }
 }
 
@@ -142,7 +143,15 @@ private extension FeedViewController {
         }
     }
     
-    @objc func handleRefresh() {
+    func setupRefresh() {
+        emptyView.onRefresh = { [weak self] in
+            guard let self else { return }
+            self.viewModel.fetchPosts()
+        }
+    }
+    
+    @objc
+    func handleRefresh() {
         viewModel.refreshPosts()
     }
     
@@ -213,7 +222,6 @@ private extension FeedViewController {
             if refreshControl.isRefreshing {
                 refreshControl.endRefreshing()
             }
-            tableView.tableFooterView = nil
         case .empty:
             activityIndicator.stopAnimating()
             tableView.isHidden = true
@@ -222,7 +230,6 @@ private extension FeedViewController {
             if refreshControl.isRefreshing {
                 refreshControl.endRefreshing()
             }
-            tableView.tableFooterView = nil
         case .error(let description):
             activityIndicator.stopAnimating()
             errorView.isHidden = false
@@ -232,7 +239,6 @@ private extension FeedViewController {
             if refreshControl.isRefreshing {
                 refreshControl.endRefreshing()
             }
-            tableView.tableFooterView = nil
         case .loading:
             activityIndicator.startAnimating()
             tableView.isHidden = true
