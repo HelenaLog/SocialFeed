@@ -73,7 +73,6 @@ final class FeedViewController: UIViewController {
         configureUI()
         setupDelegates()
         fetchPosts()
-        setupRefresh()
     }
 }
 
@@ -140,13 +139,6 @@ private extension FeedViewController {
                     cell.updateLikeButton(isLiked: isLiked)
                 }
             }
-        }
-    }
-    
-    func setupRefresh() {
-        emptyView.onRefresh = { [weak self] in
-            guard let self else { return }
-            self.viewModel.fetchPosts()
         }
     }
     
