@@ -46,18 +46,14 @@ extension AlamofireNetworkClient: NetworkClient {
 extension AlamofireNetworkClient: ImageLoader {
     func loadImage(
         from url: URL,
-        completion: @escaping (Result<UIImage, NetworkError>) -> Void
+        completion: @escaping (Result<Data, NetworkError>) -> Void
     ) {
         session.request(url)
             .validate()
             .responseData { response in
                 switch response.result {
                 case .success(let data):
-                    if let image = UIImage(data: data) {
-                        completion(.success(image))
-                    } else {
-                        completion(.failure(.invalidDecode))
-                    }
+                    completion(.success(data))
                 case .failure(let error):
                     let networkError = self.mapAFError(error)
                     completion(.failure(networkError))

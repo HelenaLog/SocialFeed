@@ -1,13 +1,5 @@
 import CoreData
 
-protocol StorageType {
-    func savePosts(_ posts: [DisplayPost])
-    func fetchPosts(completion: @escaping (Result<[DisplayPost], Error>) -> Void)
-    func saveImageData(_ imageData: Data, for postId: Int)
-    func toggleLike(for postId: Int64)
-    func getImageData(for postId: Int, completion: @escaping (Result<Data?, Error>) -> Void)
-}
-
 final class StorageService {
     
     // MARK: Private Properties
@@ -31,7 +23,7 @@ final class StorageService {
 
 extension StorageService: StorageType {
     
-    func savePosts(_ posts: [DisplayPost]) {
+    func savePosts(_ posts: [PostViewItem]) {
         
         persistentContainer.performBackgroundTask { context in
             context.mergePolicy = NSMergePolicy.mergeByPropertyObjectTrump
@@ -60,28 +52,27 @@ extension StorageService: StorageType {
         }
     }
     
-    func fetchPosts(completion: @escaping (Result<[DisplayPost], Error>) -> Void) {
+    func fetchPosts(page: Int, limit: Int, completion: @escaping (Result<[PostViewItem], StorageError>) -> Void) {
         let request: NSFetchRequest<PostEntity> = PostEntity.fetchRequest()
         request.sortDescriptors = [NSSortDescriptor(key: "id", ascending: true)]
-        request.fetchLimit = 1
-        
+        request.fetchLimit = limit
+        request.fetchOffset = (page - 1) * limit
         persistentContainer.performBackgroundTask { context in
             do {
                 let postEntities = try context.fetch(request)
-                let displayPosts = postEntities.map { DisplayPost(from: $0) }
-            
+                let displayPosts = postEntities.map { PostViewItem(from: $0) }
                 DispatchQueue.main.async {
                     completion(.success(displayPosts))
                 }
             } catch {
                 DispatchQueue.main.async {
-                    completion(.failure(error))
+                    completion(.failure(.fetchFailed))
                 }
             }
         }
     }
     
-    func toggleLike(for postId: Int64) {
+    func toggleLike(for postId: Int) {
         let request: NSFetchRequest<PostEntity> = PostEntity.fetchRequest()
         request.predicate = NSPredicate(format: "id == %d", postId)
         
@@ -98,12 +89,11 @@ extension StorageService: StorageType {
         }
     }
     
-    func saveImageData(_ imageData: Data, for postId: Int) {
+    func saveImageData(_ imageData: Data, for urlString: String) {
         persistentContainer.performBackgroundTask { context in
             let request: NSFetchRequest<PostEntity> = PostEntity.fetchRequest()
-            request.predicate = NSPredicate(format: "id == %d", postId)
-            request.fetchLimit = 1
-            
+            request.predicate = NSPredicate(format: "avatarURL == %@", urlString)
+            context.mergePolicy = NSMergePolicy.mergeByPropertyObjectTrump
             do {
                 if let postEntity = try context.fetch(request).first {
                     postEntity.avatarImageData = imageData
@@ -114,12 +104,11 @@ extension StorageService: StorageType {
             }
         }
     }
-    
-    func getImageData(for postId: Int, completion: @escaping (Result<Data?, Error>) -> Void) {
+
+    func getImageData(for urlString: String, completion: @escaping (Result<Data?, StorageError>) -> Void) {
         persistentContainer.performBackgroundTask { context in
             let request: NSFetchRequest<PostEntity> = PostEntity.fetchRequest()
-            request.predicate = NSPredicate(format: "id == %d", postId)
-            request.fetchLimit = 1
+            request.predicate = NSPredicate(format: "avatarURL == %@", urlString)
             
             do {
                 guard let postEntity = try context.fetch(request).first else {
@@ -128,12 +117,19 @@ extension StorageService: StorageType {
                     }
                     return
                 }
+                
+                guard let imageData = postEntity.avatarImageData else {
+                    DispatchQueue.main.async {
+                        completion(.failure(.imageDataNotFound))
+                    }
+                    return
+                }
                 DispatchQueue.main.async {
-                    completion(.success(postEntity.avatarImageData))
+                    completion(.success(imageData))
                 }
             } catch {
                 DispatchQueue.main.async {
-                    completion(.failure(error))
+                    completion(.failure(.fetchFailed))
                 }
             }
         }

@@ -1,13 +1,6 @@
 import Foundation
 
-struct PostDTO: Decodable {
-    let userId: Int
-    let id: Int
-    let title: String
-    let body: String
-}
-
-struct DisplayPost {
+struct PostViewItem {
     let userId: Int
     let id: Int
     let title: String
@@ -21,7 +14,7 @@ struct DisplayPost {
         self.title = dto.title
         self.body = dto.body
         self.isLiked = false
-        self.avatarURL = "https://picsum.photos/seed/\(userId)200/200"
+        self.avatarURL = "https://picsum.photos/seed/\(userId)100/100"
     }
     
     init(from entity: PostEntity) {
@@ -30,6 +23,6 @@ struct DisplayPost {
         self.title = entity.title ?? String()
         self.body = entity.body ?? String()
         self.isLiked = entity.isLiked
-        self.avatarURL = entity.avatarURL ?? "https://picsum.photos/seed/\(entity.userId)200/200"
+        self.avatarURL = entity.avatarURL ?? "https://picsum.photos/seed/\(entity.userId)100/100"
     }
 }

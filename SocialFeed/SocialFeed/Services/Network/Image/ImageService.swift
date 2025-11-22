@@ -1,20 +1,44 @@
 import UIKit
 
+enum ImageServiceError: Error {
+    case network(NetworkError)
+    case database(StorageError)
+}
+
+// MARK: - LocalizedError
+
+extension ImageServiceError: LocalizedError {
+    var errorDescription: String? {
+        switch self {
+        case .network(let networkError):
+            return "Network error: \(networkError.localizedDescription)"
+        case .database(let storageError):
+            return "Storage error: \(storageError.localizedDescription)"
+        }
+    }
+}
+
 final class ImageService {
     
     // MARK: Private Properties
     
     private let imageLoader: ImageLoader
     private let imageCache: ImageCache
+    private let storageService: StorageType
+    private let networkMonitor: NetworkReachability
     
     // MARK: Init
     
     init(
         imageLoader: ImageLoader,
-        imageCache: ImageCache
+        imageCache: ImageCache,
+        storageService: StorageType,
+        networkMonitor: NetworkReachability
     ) {
         self.imageLoader = imageLoader
         self.imageCache = imageCache
+        self.storageService = storageService
+        self.networkMonitor = networkMonitor
     }
 }
 
@@ -23,26 +47,65 @@ final class ImageService {
 extension ImageService: ImageServiceType {
     func fetchImage(
         from urlString: String,
-        completion: @escaping (Result<UIImage, NetworkError>) -> Void
+        completion: @escaping (Result<UIImage, ImageServiceError>) -> Void
+    ) {
+        if networkMonitor.isConnected {
+            loadFromNetwork(urlString: urlString, completion: completion)
+        } else {
+            loadFromStorage(urlString: urlString, completion: completion)
+        }
+    }
+}
+
+// MARK: - Private Methods
+
+private extension ImageService {
+    func loadFromNetwork(
+        urlString: String,
+        completion: @escaping (Result<UIImage, ImageServiceError>) -> Void
     ) {
         guard let url = URL(string: urlString) else {
-            completion(.failure(.invalidData))
+            completion(.failure(.network(.unableToComplete)))
             return
         }
         
-        if let cachedImage = imageCache.getImage(forKey: urlString) {
-            completion(.success(cachedImage))
+        if let cachedData = imageCache.getImageData(forKey: urlString),
+           let image = UIImage(data: cachedData) {
+            completion(.success(image))
             return
         }
         
         imageLoader.loadImage(from: url) { [weak self] result in
             guard let self else { return }
             switch result {
-            case .success(let image):
-                self.imageCache.setImage(image, forKey: urlString)
+            case .success(let data):
+                guard let image = UIImage(data: data) else {
+                    completion(.failure(.network(.invalidDecode)))
+                    return
+                }
+                self.imageCache.setImageData(data, forKey: urlString)
+                self.storageService.saveImageData(data, for: urlString)
                 completion(.success(image))
+            case .failure:
+                self.loadFromStorage(urlString: urlString, completion: completion)
+            }
+        }
+    }
+    
+    func loadFromStorage(
+        urlString: String,
+        completion: @escaping (Result<UIImage, ImageServiceError>) -> Void
+    ) {
+        storageService.getImageData(for: urlString) { result in
+            switch result {
+            case .success(let data):
+                if let data = data, let image = UIImage(data: data) {
+                    completion(.success(image))
+                } else {
+                    completion(.failure(.database(.objectNotFound)))
+                }
             case .failure(let error):
-                completion(.failure(error))
+                completion(.failure(.database(error)))
             }
         }
     }
