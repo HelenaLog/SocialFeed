@@ -37,9 +37,9 @@ final class FeedViewModel {
     /// Сервис для загрузки изображений
     private let imageService: ImageServiceType
     /// Текущая страница для пагинации
-    private var currentPage = 1
+    private var currentPage = PointConstants.startPage
     /// Количество постов, загружаемых за один запрос
-    private let limit = 5
+    private let limit = PointConstants.limit
     /// Флаг наличия дополнительных постов для загрузки
     private var hasMorePosts = true
     /// Флаг выполнения запроса (предотвращение параллельных запрос)
@@ -76,7 +76,7 @@ extension FeedViewModel: FeedViewModelProtocol {
     func fetchMorePosts() {
         /// Проверка возможности  загрузки дополнительных постов
         guard !isFetching, !isRefreshing, !isLoading, hasMorePosts else { return }
-        currentPage += 1
+        currentPage += PointConstants.pageIncrement
         fetchPostData(isRefresh: false)
     }
     
@@ -163,12 +163,12 @@ private extension FeedViewModel {
                     self.currentState = .success
                 } else {
                     let startIndex = self.posts.count - newPosts.count
-                    self.currentState = startIndex == 0
+                    self.currentState = startIndex == .zero
                     ? .success
                     : .pagination(startIndex: startIndex, count: newPosts.count)
                 }
             case .failure(let error):
-                if !isRefresh { self.currentPage -= 1 }
+                if !isRefresh { self.currentPage -= PointConstants.pageDecrement }
                 switch error {
                 case .network(let networkError):
                     handleNetworkError(networkError)
@@ -195,5 +195,19 @@ private extension FeedViewModel {
         default:
             currentState = posts.isEmpty ? .empty : .error(storageError.localizedDescription)
         }
+    }
+}
+
+// MARK: - Constants
+
+private extension FeedViewModel {
+    
+    // MARK: PointConstants
+    
+    enum PointConstants {
+        static let startPage = 1
+        static let limit = 5
+        static let pageIncrement = 1
+        static let pageDecrement = 1
     }
 }

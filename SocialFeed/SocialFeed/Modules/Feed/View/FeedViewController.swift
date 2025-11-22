@@ -29,7 +29,7 @@ final class FeedViewController: UIViewController {
     private let refreshControl: UIRefreshControl = {
         let refreshControl = UIRefreshControl()
         refreshControl.tintColor = .systemBlue
-        refreshControl.attributedTitle = NSAttributedString(string: "Refreshing...")
+        refreshControl.attributedTitle = NSAttributedString(string: StringConstants.title)
         return refreshControl
     }()
     
@@ -88,7 +88,7 @@ extension FeedViewController: UITableViewDelegate {
         if shouldLoadNextPage(
             scrollView: scrollView,
             targetOffsetY: targetContentOffset.pointee.y,
-            screensToLoadNextPage: 2.0) {
+            screensToLoadNextPage: PointConstants.screensToLoadNextPage) {
             viewModel.fetchMorePosts()
         }
     }
@@ -295,5 +295,22 @@ private extension FeedViewController {
             emptyView.trailingAnchor.constraint(equalTo: view.trailingAnchor),
             emptyView.bottomAnchor.constraint(equalTo: view.safeAreaLayoutGuide.bottomAnchor)
         ])
+    }
+}
+
+// MARK: - Constants
+
+private extension FeedViewController {
+    
+    // MARK: StringContants
+    
+    enum StringConstants {
+        static let title = "Refreshing..."
+    }
+    
+    // MARK: PointConstants
+    
+    enum PointConstants {
+        static let screensToLoadNextPage: Double = 2.0
     }
 }

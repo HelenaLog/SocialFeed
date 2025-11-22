@@ -84,8 +84,7 @@ private extension EmptyView {
         [
             imageView,
             titleLabel,
-            subtitleLabel,
-            actionButton
+            subtitleLabel
         ].forEach { addSubview($0) }
     }
     
@@ -94,7 +93,7 @@ private extension EmptyView {
             imageView.heightAnchor.constraint(equalToConstant: PointConstants.Image.height),
             imageView.widthAnchor.constraint(equalToConstant: PointConstants.Image.height),
             imageView.centerXAnchor.constraint(equalTo: centerXAnchor),
-            imageView.centerYAnchor.constraint(equalTo: centerYAnchor, constant: -45),
+            imageView.centerYAnchor.constraint(equalTo: centerYAnchor, constant: PointConstants.Spacing.imageCenterYOffset),
             
             titleLabel.topAnchor.constraint(equalTo: imageView.bottomAnchor, constant: PointConstants.Spacing.titleTop),
             titleLabel.leadingAnchor.constraint(equalTo: leadingAnchor, constant: PointConstants.Spacing.leading),
@@ -103,12 +102,6 @@ private extension EmptyView {
             subtitleLabel.topAnchor.constraint(equalTo: titleLabel.bottomAnchor, constant: PointConstants.Spacing.subtitleTop),
             subtitleLabel.leadingAnchor.constraint(equalTo: leadingAnchor, constant: PointConstants.Spacing.leading),
             subtitleLabel.trailingAnchor.constraint(equalTo: trailingAnchor, constant: PointConstants.Spacing.trailing),
-            
-            actionButton.topAnchor.constraint(equalTo: subtitleLabel.bottomAnchor, constant: PointConstants.Spacing.buttonTop),
-            actionButton.centerXAnchor.constraint(equalTo: centerXAnchor),
-            actionButton.leadingAnchor.constraint(equalTo: leadingAnchor, constant: PointConstants.Spacing.buttonLeading),
-            actionButton.trailingAnchor.constraint(equalTo: trailingAnchor, constant: PointConstants.Spacing.buttonTrailing),
-            actionButton.heightAnchor.constraint(equalToConstant: PointConstants.Button.height)
         ])
     }
 }
