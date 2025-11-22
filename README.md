@@ -22,7 +22,7 @@
 ## 📸 Скриншоты
 
 ### Главный экран
-| <img src="SocialFeed/Screenshots/main_screen.png" width="300"> | <img src="SocialFeed/Screenshots/main_screen_online.gif" width="300"> |
+| <img src="SocialFeed/Screenshots/main-screen.png" width="300"> | <img src="SocialFeed/Screenshots/main_screen_online.gif" width="300"> |
 
 ### Сохранение лайков
 
