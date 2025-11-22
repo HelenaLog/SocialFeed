@@ -1,12 +1,8 @@
 import Foundation
 
-protocol PostServiceType {
-    func fetchPosts(
-        page: Int,
-        limit: Int,
-        completion: @escaping (Result<[PostViewItem], Error>) -> Void
-    )
-    func toggleLike(for postId: Int)
+enum PostServiceError: Error {
+    case network(NetworkError)
+    case database(StorageError)
 }
 
 final class PostService {
@@ -36,7 +32,7 @@ extension PostService: PostServiceType {
     func fetchPosts(
         page: Int,
         limit: Int,
-        completion: @escaping (Result<[PostViewItem], Error>) -> Void
+        completion: @escaping (Result<[PostViewItem], PostServiceError>) -> Void
     ) {
         if networkMonitor.isConnected {
             loadFromNetwork(page: page, limit: limit, completion: completion)
@@ -54,7 +50,7 @@ private extension PostService {
     func loadFromNetwork(
         page: Int,
         limit: Int,
-        completion: @escaping (Result<[PostViewItem], Error>) -> Void
+        completion: @escaping (Result<[PostViewItem], PostServiceError>) -> Void
     ) {
         networkService.fetchPosts(page: page, limit: limit) { [weak self] result in
             guard let self else { return }
@@ -70,13 +66,17 @@ private extension PostService {
         }
     }
     
-    func loadFromStorage(page: Int, limit: Int, completion: @escaping (Result<[PostViewItem], Error>) -> Void) {
+    func loadFromStorage(
+        page: Int,
+        limit: Int,
+        completion: @escaping (Result<[PostViewItem], PostServiceError>) -> Void
+    ) {
         storageService.fetchPosts(page: page, limit: limit) { result in
             switch result {
             case .success(let posts):
                 completion(.success(posts))
             case .failure(let error):
-                print(error.localizedDescription)
+                completion(.failure(.database(error)))
             }
         }
     }
